@@ -58,14 +58,17 @@ def uint8ToHex (c : UInt8) : String :=
   let d1 := c % 16
   (hexDigitRepr d2.toNat ++ hexDigitRepr d1.toNat).toUpper
 
-def dumpExpr (e : Expr) : M Nat := do
+mutual
+partial def dumpExpr (e : Expr) : M Nat := do
   if let .mdata _ e := e then
     return (← dumpExpr e)
   getIdx e (·.visitedExprs) ({ · with visitedExprs := · }) do
     match e with
     | .bvar i => return s!"#EV {i}"
     | .sort l => return s!"#ES {← dumpLevel l}"
-    | .const n us => return s!"#EC {← dumpName n} {← seq <$> us.mapM dumpLevel}"
+    | .const n us =>
+      dumpConstant n
+      return s!"#EC {← dumpName n} {← seq <$> us.mapM dumpLevel}"
     | .app f e => return s!"#EA {← dumpExpr f} {← dumpExpr e}"
     | .lam n d b bi => return s!"#EL {dumpInfo bi} {← dumpName n} {← dumpExpr d} {← dumpExpr b}"
     | .letE n d v b _ => return s!"#EZ {← dumpName n} {← dumpExpr d} {← dumpExpr v} {← dumpExpr b}"
@@ -76,7 +79,7 @@ def dumpExpr (e : Expr) : M Nat := do
     | .lit (.natVal i) => return s!"#ELN {i}"
     | .lit (.strVal s) => return s!"#ELS {s.toUTF8.toList.map uint8ToHex |> seq}"
 
-def dumpConstant (c : Name) : M Unit := do
+partial def dumpConstant (c : Name) : M Unit := do
   if (← get).visitedConstants.contains c then
     return
   modify fun st => { st with visitedConstants := st.visitedConstants.insert c }
@@ -96,3 +99,4 @@ def dumpConstant (c : Name) : M Unit := do
     let ctors ← (·.join) <$> val.ctors.mapM fun ctor => return [← dumpName ctor, ← dumpExpr ((← read).env.find? ctor |>.get!.type)]
     IO.println s!"#IND {val.numParams} {← dumpName c} {← dumpExpr val.type} {val.numCtors} {seq ctors} {← seq <$> val.levelParams.mapM dumpName}"
   | .ctorInfo _ | .recInfo _ => return
+end
