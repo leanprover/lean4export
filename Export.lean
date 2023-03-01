@@ -59,7 +59,6 @@ def uint8ToHex (c : UInt8) : String :=
   let d1 := c % 16
   (hexDigitRepr d2.toNat ++ hexDigitRepr d1.toNat).toUpper
 
-mutual
 partial def dumpExpr (e : Expr) : M Nat := do
   if let .mdata _ e := e then
     return (← dumpExpr e)
@@ -68,7 +67,6 @@ partial def dumpExpr (e : Expr) : M Nat := do
     | .bvar i => return s!"#EV {i}"
     | .sort l => return s!"#ES {← dumpLevel l}"
     | .const n us =>
-      dumpConstant n
       return s!"#EC {← dumpName n} {← seq <$> us.mapM dumpLevel}"
     | .app f e => return s!"#EA {← dumpExpr f} {← dumpExpr e}"
     | .lam n d b bi => return s!"#EL {dumpInfo bi} {← dumpName n} {← dumpExpr d} {← dumpExpr b}"
@@ -86,12 +84,17 @@ partial def dumpConstant (c : Name) : M Unit := do
   modify fun st => { st with visitedConstants := st.visitedConstants.insert c }
   match (← read).env.find? c |>.get! with
   | .axiomInfo val => do
+    dumpDeps val.type
     IO.println s!"#AX {← dumpName c} {← dumpExpr val.type} {← seq <$> val.levelParams.mapM dumpName}"
   | .defnInfo val => do
     if val.safety != .safe then
       return
+    dumpDeps val.type
+    dumpDeps val.value
     IO.println s!"#DEF {← dumpName c} {← dumpExpr val.type} {← dumpExpr val.value} {← seq <$> val.levelParams.mapM dumpName}"
   | .thmInfo val => do
+    dumpDeps val.type
+    dumpDeps val.value
     IO.println s!"#DEF {← dumpName c} {← dumpExpr val.type} {← dumpExpr val.value} {← seq <$> val.levelParams.mapM dumpName}"
   | .opaqueInfo _ => return
   | .quotInfo _ =>
@@ -103,7 +106,13 @@ partial def dumpConstant (c : Name) : M Unit := do
     dumpConstant `Eq
     IO.println s!"#QUOT"
   | .inductInfo val => do
+    dumpDeps val.type
+    for ctor in val.ctors do
+      dumpDeps ((← read).env.find? ctor |>.get!.type)
     let ctors ← (·.join) <$> val.ctors.mapM fun ctor => return [← dumpName ctor, ← dumpExpr ((← read).env.find? ctor |>.get!.type)]
     IO.println s!"#IND {val.numParams} {← dumpName c} {← dumpExpr val.type} {val.numCtors} {seq ctors} {← seq <$> val.levelParams.mapM dumpName}"
   | .ctorInfo _ | .recInfo _ => return
-end
+where
+  dumpDeps e := do
+    for c in e.getUsedConstants do
+      dumpConstant c
