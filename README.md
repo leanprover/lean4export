@@ -1,5 +1,13 @@
 A simple declaration exporter for Lean 4 using the [Lean 3 export format](https://github.com/leanprover/lean/blob/master/doc/export_format.md)
 
+## How to Run
+
+```sh
+$ lake exe lean4export <mods> [-- <decls>]
+```
+This exports the contents of the given Lean modules, looked up in the core library or `LEAN_PATH` (as e.g. initialized by an outer `lake env`) and their transitive dependencies.
+A specific list of declarations to be exported from these modules can be given after a separating `--`.
+
 ## Format Extensions
 
 The following commands have been added to represent new features of the Lean 4 type system.
