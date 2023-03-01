@@ -10,6 +10,7 @@ structure State where
   visitedLevels : HashMap Level Nat := .insert {} .zero 0
   visitedExprs : HashMap Expr Nat := {}
   visitedConstants : NameHashSet := {}
+  visitedQuot : Bool := false
 
 abbrev M := ReaderT Context <| StateT State IO
 
@@ -94,6 +95,12 @@ partial def dumpConstant (c : Name) : M Unit := do
     IO.println s!"#DEF {← dumpName c} {← dumpExpr val.type} {← dumpExpr val.value} {← seq <$> val.levelParams.mapM dumpName}"
   | .opaqueInfo _ => return
   | .quotInfo _ =>
+    -- Lean 4 uses 4 separate `Quot` declarations in the environment, but Lean 3 uses a single special declarations
+    if (← get).visitedQuot then
+      return
+    modify ({ · with visitedQuot := true })
+    -- the only dependency of the quot module
+    dumpConstant `Eq
     IO.println s!"#QUOT"
   | .inductInfo val => do
     let ctors ← (·.join) <$> val.ctors.mapM fun ctor => return [← dumpName ctor, ← dumpExpr ((← read).env.find? ctor |>.get!.type)]
