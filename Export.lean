@@ -96,7 +96,12 @@ partial def dumpConstant (c : Name) : M Unit := do
     dumpDeps val.type
     dumpDeps val.value
     IO.println s!"#DEF {← dumpName c} {← dumpExpr val.type} {← dumpExpr val.value} {← seq <$> val.levelParams.mapM dumpName}"
-  | .opaqueInfo _ => return
+  | .opaqueInfo val  =>
+    if val.isUnsafe then
+      return
+    dumpDeps val.type
+    dumpDeps val.value
+    IO.println s!"#DEF {← dumpName c} {← dumpExpr val.type} {← dumpExpr val.value} {← seq <$> val.levelParams.mapM dumpName}"
   | .quotInfo _ =>
     -- Lean 4 uses 4 separate `Quot` declarations in the environment, but Lean 3 uses a single special declarations
     if (← get).visitedQuot then
