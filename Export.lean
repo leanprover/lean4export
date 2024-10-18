@@ -1,6 +1,7 @@
 import Lean
 
-open Lean
+open Lean hiding HashMap
+open Std (HashMap)
 
 structure Context where
   env : Environment
@@ -22,7 +23,7 @@ def M.run (env : Environment) (act : M α) : IO α :=
 @[inline]
 def getIdx [Hashable α] [BEq α] (x : α) (getM : State → HashMap α Nat) (setM : State → HashMap α Nat → State) (rec : M String) : M Nat := do
   let m ← getM <$> get
-  if let some idx := m.find? x then
+  if let some idx := m[x]? then
     return idx
   let s ← rec
   let m ← getM <$> get
