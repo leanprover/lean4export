@@ -1,6 +1,6 @@
 import Lean
 
-open Lean hiding HashMap
+open Lean
 open Std (HashMap)
 
 structure Context where
@@ -115,7 +115,7 @@ partial def dumpConstant (c : Name) : M Unit := do
     dumpDeps val.type
     for ctor in val.ctors do
       dumpDeps ((← read).env.find? ctor |>.get!.type)
-    let ctors ← (·.join) <$> val.ctors.mapM fun ctor => return [← dumpName ctor, ← dumpExpr ((← read).env.find? ctor |>.get!.type)]
+    let ctors ← (·.flatten) <$> val.ctors.mapM fun ctor => return [← dumpName ctor, ← dumpExpr ((← read).env.find? ctor |>.get!.type)]
     IO.println s!"#IND {val.numParams} {← dumpName c} {← dumpExpr val.type} {val.numCtors} {seq ctors} {← seq <$> val.levelParams.mapM dumpName}"
   | .ctorInfo _ | .recInfo _ => return
 where
