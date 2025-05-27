@@ -1,6 +1,8 @@
 import Lean
+import Std.Data.HashMap.Basic
 
 open Lean
+open Std (HashMap)
 
 instance : Hashable RecursorRule where
   hash r := hash (r.ctor, r.nfields, r.rhs)
@@ -25,7 +27,7 @@ def M.run (env : Environment) (act : M α) : IO α :=
 @[inline]
 def getIdx [Hashable α] [BEq α] (x : α) (getM : State → HashMap α Nat) (setM : State → HashMap α Nat → State) (rec : M String) : M Nat := do
   let m ← getM <$> get
-  if let some idx := m.find? x then
+  if let some idx := m[x]? then
     return idx
   let s ← rec
   let m ← getM <$> get
@@ -63,9 +65,9 @@ def uint8ToHex (c : UInt8) : String :=
   (hexDigitRepr d2.toNat ++ hexDigitRepr d1.toNat).toUpper
 
 /-
-Eliminate `mdata` nodes, while dumping an expression.
+Eliminate `mdata` nodes while dumping an expression.
 
-When an `mdata` node is encountered, skip it. For everything else, update `e`
+When an `mdata` node is encountered, pass through it. For everything else, update `e`
 IFF a sub-expression contained `mdata`.
 
 returns `(had mdata, the expression with any mdata removed, e's export index)`
@@ -77,7 +79,7 @@ partial def dumpExprAux (e : Expr) : M (Bool × Expr × Nat) := do
     let (_, e'', idx) ← dumpExprAux e'
     return (true, e'', idx)
   /- If we've already seen this expression, use the cached data -/
-  if let some idx := (← get).visitedExprs.find? e then
+  if let some idx := (← get).visitedExprs.get? e then
     return (false, e, idx)
   else
     let (ck, e, s) ←
@@ -119,7 +121,7 @@ where
     /- If the expression had `mdata` and was rebuilt, check the rebuilt expression
     against the cache once more -/
     if hadMData then
-      if let some idx := (← get).visitedExprs.find? e then
+      if let some idx := (← get).visitedExprs.get? e then
       return (hadMData, e, idx)
     let idx := (← get).visitedExprs.size
     modify (fun st => { st with visitedExprs := st.visitedExprs.insert e idx })

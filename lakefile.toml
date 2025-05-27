@@ -1,0 +1,14 @@
+name = "lean4export"
+defaultTargets = ["lean4export"]
+testDriver = "Test"
+
+[[lean_lib]]
+name = "Export"
+
+[[lean_lib]]
+name = "Test"
+
+[[lean_exe]]
+name = "lean4export"
+root = "Main"
+supportInterpreter = true
