@@ -17,6 +17,7 @@ structure State where
   visitedRecRules : HashMap RecursorRule Nat := {}
   visitedConstants : NameHashSet := {}
   noMDataExprs : HashMap Expr Expr := {}
+  exportUnsafe : Bool := false
 
 abbrev M := ReaderT Context <| StateT State IO
 
@@ -117,7 +118,7 @@ def dumpUparams (uparams : List Name) : M (List Nat) := do
 
 partial def dumpConstant (c : Name) : M Unit := do
   let declar := ((← read).env.find? c).get!
-  if declar.isUnsafe || (← get).visitedConstants.contains c then
+  if (declar.isUnsafe && !(← get).exportUnsafe) || (← get).visitedConstants.contains c then
     return
   modify fun st => { st with visitedConstants := st.visitedConstants.insert c }
   match declar with

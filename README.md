@@ -3,10 +3,12 @@ A simple declaration exporter for Lean 4 using the [Lean 4 export format](https:
 ## How to Run
 
 ```sh
-$ lake exe lean4export <mods> [-- <decls>]
+$ lake exe lean4export <mods> [options] [-- <decls>]
 ```
 This exports the contents of the given Lean modules, looked up in the core library or `LEAN_PATH` (as e.g. initialized by an outer `lake env`) and their transitive dependencies.
 A specific list of declarations to be exported from these modules can be given after a separating `--`.
+The option `--export-unsafe` can be used to include unsafe declarations in the export file. This may be useful for testing and debugging other tools, where unsafe declarations can serve as negative examples.
+
 
 ## Format Extensions
 
