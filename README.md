@@ -1,4 +1,4 @@
-A simple declaration exporter for Lean 4 using the [Lean 3 export format](https://github.com/leanprover/lean/blob/master/doc/export_format.md)
+A simple declaration exporter for Lean 4 using the [Lean 4 export format](https://ammkrn.github.io/type_checking_in_lean4/export_format.html)
 
 ## How to Run
 

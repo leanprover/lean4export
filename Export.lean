@@ -1,7 +1,11 @@
 import Lean
+import Std.Data.HashMap.Basic
 
 open Lean
 open Std (HashMap)
+
+instance instHashableRecursorRule : Hashable RecursorRule where
+  hash r := hash (r.ctor, r.nfields, r.rhs)
 
 structure Context where
   env : Environment
@@ -10,8 +14,9 @@ structure State where
   visitedNames : HashMap Name Nat := .insert {} .anonymous 0
   visitedLevels : HashMap Level Nat := .insert {} .zero 0
   visitedExprs : HashMap Expr Nat := {}
+  visitedRecRules : HashMap RecursorRule Nat := {}
   visitedConstants : NameHashSet := {}
-  visitedQuot : Bool := false
+  noMDataExprs : HashMap Expr Expr := {}
 
 abbrev M := ReaderT Context <| StateT State IO
 
@@ -60,65 +65,105 @@ def uint8ToHex (c : UInt8) : String :=
   let d1 := c % 16
   (hexDigitRepr d2.toNat ++ hexDigitRepr d1.toNat).toUpper
 
-partial def dumpExpr (e : Expr) : M Nat := do
-  if let .mdata _ e := e then
-    return (← dumpExpr e)
+def removeMData (e : Expr) : M Expr := do
+  if let some x := (← get).noMDataExprs[e]? then
+    return x
+  let e' ← match e with
+  | .mdata _ e' => removeMData e'
+  | .fvar .. | .mvar ..=> unreachable!
+  | .bvar .. | .sort .. | .const .. | .lit _ => pure e
+  | .app f a =>
+    pure <| e.updateApp! (← removeMData f) (← removeMData a)
+  | .lam _ d b _ =>
+    pure <| e.updateLambdaE! (← removeMData d) (← removeMData b)
+  | .letE _ d v b _ =>
+    pure <| e.updateLet! (← removeMData d) (← removeMData v) (← removeMData b)
+  | .forallE _ d b _ =>
+    pure <| e.updateForallE! (← removeMData d) (← removeMData b)
+  | .proj _ _ e2 =>
+    pure <| e.updateProj! (← removeMData e2)
+  modify (fun st => { st with noMDataExprs := st.noMDataExprs.insert e e' })
+  pure e'
+
+partial def dumpExprAux (e : Expr) : M Nat := do
   getIdx e (·.visitedExprs) ({ · with visitedExprs := · }) do
     match e with
     | .bvar i => return s!"#EV {i}"
     | .sort l => return s!"#ES {← dumpLevel l}"
     | .const n us =>
       return s!"#EC {← dumpName n} {← seq <$> us.mapM dumpLevel}"
-    | .app f e => return s!"#EA {← dumpExpr f} {← dumpExpr e}"
-    | .lam n d b bi => return s!"#EL {dumpInfo bi} {← dumpName n} {← dumpExpr d} {← dumpExpr b}"
-    | .letE n d v b _ => return s!"#EZ {← dumpName n} {← dumpExpr d} {← dumpExpr v} {← dumpExpr b}"
-    | .forallE n d b bi => return s!"#EP {dumpInfo bi} {← dumpName n} {← dumpExpr d} {← dumpExpr b}"
+    | .app f e => return s!"#EA {← dumpExprAux f} {← dumpExprAux e}"
+    | .lam n d b bi => return s!"#EL {dumpInfo bi} {← dumpName n} {← dumpExprAux d} {← dumpExprAux b}"
+    | .letE n d v b _ => return s!"#EZ {← dumpName n} {← dumpExprAux d} {← dumpExprAux v} {← dumpExprAux b}"
+    | .forallE n d b bi => return s!"#EP {dumpInfo bi} {← dumpName n} {← dumpExprAux d} {← dumpExprAux b}"
     | .mdata .. | .fvar .. | .mvar .. => unreachable!
     -- extensions compared to Lean 3
-    | .proj s i e => return s!"#EJ {← dumpName s} {i} {← dumpExpr e}"
+    | .proj s i e => return s!"#EJ {← dumpName s} {i} {← dumpExprAux e}"
     | .lit (.natVal i) => return s!"#ELN {i}"
     | .lit (.strVal s) => return s!"#ELS {s.toUTF8.toList.map uint8ToHex |> seq}"
 
+def dumpExpr (e : Expr) : M Nat := do
+  dumpExprAux (← removeMData e)
+
+def dumpHints : ReducibilityHints → String
+  | .opaque => "O"
+  | .abbrev => "A"
+  | .regular n => s!"R {n}"
+
+def dumpUparams (uparams : List Name) : M (List Nat) := do
+  let nameIdxs ← uparams.mapM dumpName
+  let _ ← (uparams.map (.param)).mapM dumpLevel
+  pure nameIdxs
+
 partial def dumpConstant (c : Name) : M Unit := do
-  if (← get).visitedConstants.contains c then
+  let declar := ((← read).env.find? c).get!
+  if declar.isUnsafe || (← get).visitedConstants.contains c then
     return
   modify fun st => { st with visitedConstants := st.visitedConstants.insert c }
-  match (← read).env.find? c |>.get! with
+  match declar with
   | .axiomInfo val => do
-    dumpDeps val.type
-    IO.println s!"#AX {← dumpName c} {← dumpExpr val.type} {← seq <$> val.levelParams.mapM dumpName}"
+    IO.println s!"#AX {← dumpName c} {← dumpExpr val.type} {← seq <$> dumpUparams val.levelParams}"
   | .defnInfo val => do
-    if val.safety != .safe then
-      return
     dumpDeps val.type
     dumpDeps val.value
-    IO.println s!"#DEF {← dumpName c} {← dumpExpr val.type} {← dumpExpr val.value} {← seq <$> val.levelParams.mapM dumpName}"
+    IO.println s!"#DEF {← dumpName c} {← dumpExpr val.type} {← dumpExpr val.value} {dumpHints val.hints} {← seq <$> dumpUparams val.levelParams}"
   | .thmInfo val => do
     dumpDeps val.type
     dumpDeps val.value
-    IO.println s!"#DEF {← dumpName c} {← dumpExpr val.type} {← dumpExpr val.value} {← seq <$> val.levelParams.mapM dumpName}"
-  | .opaqueInfo val  =>
-    if val.isUnsafe then
-      return
+    IO.println s!"#THM {← dumpName c} {← dumpExpr val.type} {← dumpExpr val.value} {← seq <$> dumpUparams val.levelParams}"
+  | .opaqueInfo val => do
     dumpDeps val.type
     dumpDeps val.value
-    IO.println s!"#DEF {← dumpName c} {← dumpExpr val.type} {← dumpExpr val.value} {← seq <$> val.levelParams.mapM dumpName}"
-  | .quotInfo _ =>
-    -- Lean 4 uses 4 separate `Quot` declarations in the environment, but Lean 3 uses a single special declarations
-    if (← get).visitedQuot then
-      return
-    modify ({ · with visitedQuot := true })
-    -- the only dependency of the quot module
-    dumpConstant `Eq
-    IO.println s!"#QUOT"
+    IO.println s!"#OPAQ {← dumpName c} {← dumpExpr val.type} {← dumpExpr val.value} {← seq <$> dumpUparams val.levelParams}"
+  | .quotInfo val =>
+    dumpDeps val.type
+    IO.println s!"#QUOT {← dumpName c} {← dumpExpr val.type} {← seq <$> dumpUparams val.levelParams}"
   | .inductInfo val => do
     dumpDeps val.type
+    let indNameIdxs ← val.all.mapM dumpName
+    let ctorNameIdxs ← val.ctors.mapM (fun ctor => dumpName ctor)
+    let isReflexive := if val.isReflexive then 1 else 0
+    let isRec := if val.isRec then 1 else 0
+    IO.println s!"#IND {← dumpName c} {← dumpExpr val.type} {isReflexive} {isRec} {val.numNested} {val.numParams} {val.numIndices} {indNameIdxs.length} {seq indNameIdxs} {val.numCtors} {seq ctorNameIdxs} {← seq <$> dumpUparams val.levelParams}"
+    /-
+    We now have at least one inductive exported for which the constructor is never invoked, but
+    they're needed for the recursors.
+    -/
     for ctor in val.ctors do
-      dumpDeps ((← read).env.find? ctor |>.get!.type)
-    let ctors ← (·.flatten) <$> val.ctors.mapM fun ctor => return [← dumpName ctor, ← dumpExpr ((← read).env.find? ctor |>.get!.type)]
-    IO.println s!"#IND {val.numParams} {← dumpName c} {← dumpExpr val.type} {val.numCtors} {seq ctors} {← seq <$> val.levelParams.mapM dumpName}"
-  | .ctorInfo _ | .recInfo _ => return
+      dumpConstant ctor
+  | .ctorInfo val =>
+    dumpDeps val.type
+    IO.println s!"#CTOR {← dumpName c} {← dumpExpr val.type} {← dumpName val.induct} {val.cidx} {val.numParams} {val.numFields} {← seq <$> dumpUparams val.levelParams}"
+  | .recInfo val =>
+    dumpDeps val.type
+    let indNameIdxs ← val.all.mapM dumpName
+    let k := if val.k then 1 else 0
+    let ruleIdxs ← val.rules.mapM (fun rule => dumpRecRule rule)
+    IO.println s!"#REC {← dumpName c} {← dumpExpr val.type} {indNameIdxs.length} {seq indNameIdxs} {val.numParams} {val.numIndices} {val.numMotives} {val.numMinors} {ruleIdxs.length} {seq ruleIdxs} {k} {← seq <$> dumpUparams val.levelParams}"
 where
   dumpDeps e := do
     for c in e.getUsedConstants do
       dumpConstant c
+  dumpRecRule (rule : RecursorRule) : M Nat := getIdx rule (·.visitedRecRules) ({ · with visitedRecRules := · }) do
+    dumpDeps (rule.rhs)
+    return s!"#RR {← dumpName rule.ctor} {rule.nfields} {← dumpExpr rule.rhs}"

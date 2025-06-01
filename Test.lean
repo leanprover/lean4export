@@ -78,7 +78,7 @@ info: 1 #NS 0 id
 4 #EP #BI 2 0 3
 5 #EL #BD 4 1 1
 6 #EL #BI 2 0 5
-#DEF 1 4 6 3
+#DEF 1 4 6 R 1 3
 -/
 #guard_msgs in
 #eval run <| dumpConstant `id
@@ -86,27 +86,29 @@ info: 1 #NS 0 id
 /--
 info: 1 #NS 0 List
 2 #NS 1 nil
-3 #NS 0 α
-4 #NS 0 u
-1 #UP 4
+3 #NS 1 cons
+4 #NS 0 α
+5 #NS 0 u
+1 #UP 5
 2 #US 1
 0 #ES 2
-1 #EC 1 1
-2 #EV 0
-3 #EA 1 2
-4 #EP #BI 3 0 3
-5 #NS 1 cons
+1 #EP #BD 4 0 0
+#IND 1 1 0 1 0 1 0 1 1 2 2 3 5
+2 #EC 1 1
+3 #EV 0
+4 #EA 2 3
+5 #EP #BI 4 0 4
+#CTOR 2 5 1 0 1 0 5
 6 #NS 0 head
 7 #NS 0 tail
-5 #EV 1
-6 #EA 1 5
-7 #EV 2
-8 #EA 1 7
-9 #EP #BD 7 6 8
-10 #EP #BD 6 2 9
-11 #EP #BI 3 0 10
-12 #EP #BD 3 0 0
-#IND 1 1 12 2 2 4 5 11 4
+6 #EV 1
+7 #EA 2 6
+8 #EV 2
+9 #EA 2 8
+10 #EP #BD 7 7 9
+11 #EP #BD 6 3 10
+12 #EP #BI 4 0 11
+#CTOR 3 12 1 1 1 2 5
 -/
 #guard_msgs in
 #eval run <| dumpConstant `List
