@@ -123,6 +123,7 @@ partial def dumpConstant (c : Name) : M Unit := do
   modify fun st => { st with visitedConstants := st.visitedConstants.insert c }
   match declar with
   | .axiomInfo val => do
+    dumpDeps val.type
     IO.println s!"#AX {← dumpName c} {← dumpExpr val.type} {← seq <$> dumpUparams val.levelParams}"
   | .defnInfo val => do
     dumpDeps val.type
