@@ -77,8 +77,8 @@ def removeMData (e : Expr) : M Expr := do
     pure <| e.updateApp! (← removeMData f) (← removeMData a)
   | .lam _ d b _ =>
     pure <| e.updateLambdaE! (← removeMData d) (← removeMData b)
-  | .letE _ d v b _ =>
-    pure <| e.updateLet! (← removeMData d) (← removeMData v) (← removeMData b)
+  | .letE _ d v b nonDep =>
+    pure <| e.updateLet! (← removeMData d) (← removeMData v) (← removeMData b) nonDep
   | .forallE _ d b _ =>
     pure <| e.updateForallE! (← removeMData d) (← removeMData b)
   | .proj _ _ e2 =>
