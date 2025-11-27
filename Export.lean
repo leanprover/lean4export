@@ -19,9 +19,9 @@ structure State where
   noMDataExprs : HashMap Expr Expr := {}
   exportUnsafe : Bool := false
 
-abbrev M := ReaderT Context <| StateT State IO
+abbrev M := ExceptT String <| ReaderT Context <| StateT State IO
 
-def M.run (env : Environment) (act : M α) : IO α :=
+def M.run (env : Environment) (act : M α) : IO (Except String α) :=
   StateT.run' (s := {}) do
     ReaderT.run (r := { env }) do
       act
@@ -46,7 +46,8 @@ def dumpName (n : Name) : M Nat := getIdx n (·.visitedNames) ({ · with visited
 
 def dumpLevel (l : Level) : M Nat := getIdx l (·.visitedLevels) ({ · with visitedLevels := · }) do
   match l with
-  | .zero | .mvar _ => unreachable!
+  | .zero => unreachable!
+  | .mvar _ => throw s!"level mvars may not be exported"
   | .succ l => return s!"#US {← dumpLevel l}"
   | .max l1 l2 => return s!"#UM {← dumpLevel l1} {← dumpLevel l2}"
   | .imax l1 l2 => return s!"#UIM {← dumpLevel l1} {← dumpLevel l2}"
@@ -71,7 +72,8 @@ def removeMData (e : Expr) : M Expr := do
     return x
   let e' ← match e with
   | .mdata _ e' => removeMData e'
-  | .fvar .. | .mvar ..=> unreachable!
+  | .fvar .. => throw "fvar found in removeMData; fvars may not be exported"
+  | .mvar ..=> throw "mvar found in removeMData; mvars may not be exported"
   | .bvar .. | .sort .. | .const .. | .lit _ => pure e
   | .app f a =>
     pure <| e.updateApp! (← removeMData f) (← removeMData a)
@@ -97,7 +99,9 @@ partial def dumpExprAux (e : Expr) : M Nat := do
     | .lam n d b bi => return s!"#EL {dumpInfo bi} {← dumpName n} {← dumpExprAux d} {← dumpExprAux b}"
     | .letE n d v b _ => return s!"#EZ {← dumpName n} {← dumpExprAux d} {← dumpExprAux v} {← dumpExprAux b}"
     | .forallE n d b bi => return s!"#EP {dumpInfo bi} {← dumpName n} {← dumpExprAux d} {← dumpExprAux b}"
-    | .mdata .. | .fvar .. | .mvar .. => unreachable!
+    | .mdata .. => throw "mdata found in dumpExprAux; mdata may not be exported"
+    | .fvar .. => throw "fvar found in dumpExprAux; fvars may not be exported"
+    | .mvar .. => throw "mvar found in dumpExprAux; mvars may not be exported"
     -- extensions compared to Lean 3
     | .proj s i e => return s!"#EJ {← dumpName s} {i} {← dumpExprAux e}"
     | .lit (.natVal i) => return s!"#ELN {i}"
@@ -117,7 +121,10 @@ def dumpUparams (uparams : List Name) : M (List Nat) := do
   pure nameIdxs
 
 partial def dumpConstant (c : Name) : M Unit := do
-  let declar := ((← read).env.find? c).get!
+  let declar ←
+    match ((← read).env.find? c) with
+    | none => throw s!"unable to find constant in current environment `{c}`"
+    | some d => pure d
   if (declar.isUnsafe && !(← get).exportUnsafe) || (← get).visitedConstants.contains c then
     return
   modify fun st => { st with visitedConstants := st.visitedConstants.insert c }
