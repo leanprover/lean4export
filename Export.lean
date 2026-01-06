@@ -77,8 +77,13 @@ def removeMData (e : Expr) : M Expr := do
     pure <| e.updateApp! (← removeMData f) (← removeMData a)
   | .lam _ d b _ =>
     pure <| e.updateLambdaE! (← removeMData d) (← removeMData b)
-  | .letE _ d v b nonDep =>
-    pure <| e.updateLet! (← removeMData d) (← removeMData v) (← removeMData b) nonDep
+  | .letE _ d v b _ =>
+    -- Normalize `nonDep` to `false` to avoid duplicate expression indices.
+    -- Lean's `BEq` for `Expr` considers the `nonDep` flag, but external type checkers
+    -- (e.g., nanoda_lib) treat expressions as identical regardless of this optimization hint.
+    -- Without normalization, the same expression can get different indices, causing parse errors.
+    -- See: https://github.com/ammkrn/lean4export/commit/eb023e5
+    pure <| e.updateLet! (← removeMData d) (← removeMData v) (← removeMData b) false
   | .forallE _ d b _ =>
     pure <| e.updateForallE! (← removeMData d) (← removeMData b)
   | .proj _ _ e2 =>
