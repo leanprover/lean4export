@@ -77,7 +77,7 @@ Expr.bvar
 ```
 {
   "bvar": {
-    "deBrujinIndex": integer
+    "deBruijnIndex": integer
   }
   "i": integer,
 }
