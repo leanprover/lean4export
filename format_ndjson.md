@@ -180,11 +180,7 @@ Expr.lit (Literal.natVal)
 Expr.lit (Literal.strVal)
 ```
 {
-    "lit": {
-        "strVal": {
-            "val": string 
-        }
-    }
+    "strVal": string,
     "i": integer,
 }
 ```
@@ -220,7 +216,7 @@ ConstantInfo.defnInfo
         "levelParams": Array<integer>,
         "type": integer,
         "value": integer,
-        "hints": Array<"opaque" | "abbrev" | integer>
+        "hints": "opaque" | "abbrev" | {"regular": integer}
         "safety": "unsafe" | "safe" | "partial"
         "all": Array<integer>
     }
