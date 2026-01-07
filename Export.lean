@@ -1,5 +1,6 @@
 import Lean
 import Std.Data.HashMap.Basic
+import Export.Parse
 
 open Lean
 open Std (HashMap)
