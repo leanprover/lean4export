@@ -270,7 +270,7 @@ def parseExprMdata (obj : Std.TreeMap.Raw String Json) : M Unit := do
   let idx ← fetchIndex obj
   let some (.obj data) := obj["mdata"]? | fail s!"Expr.mdata {idx} invalid"
   let some (.num (exprIdx : Nat)) := data["expr"]? | fail s!"Expr.mdata {idx} invalid"
-  let some (.obj dataObj) := data["data"]? | fail s!"Expr.mdata {idx} invalid"
+  let some (.obj _dataObj) := data["data"]? | fail s!"Expr.mdata {idx} invalid"
   let expr ← getExpr exprIdx
 
   -- TODO: Unclear how to perfectly recover with the current output format
