@@ -21,6 +21,7 @@ namespace Parse
 open Std.Internal.Parsec Std.Internal.Parsec.String Lean
 
 structure State where
+  stream : IO.FS.Stream
   nameMap : Std.HashMap Nat Lean.Name := { (0, .anonymous) }
   levelMap : Std.HashMap Nat Lean.Level := { (0, .zero) }
   exprMap : Std.HashMap Nat Lean.Expr := {}
@@ -28,15 +29,14 @@ structure State where
   constMap : Std.HashMap Lean.Name Lean.ConstantInfo := {}
   constOrder : Array Lean.Name := #[]
 
-abbrev M := StateT State <| Parser
+abbrev M := StateT State <| IO
 
-def M.run (x : M α) (input : String) : Except String (α × State) := do
-  Parser.run (StateT.run x {}) input
+def M.run (x : M α) (stream : IO.FS.Stream) : IO (α × State) := do
+  StateT.run x { stream := stream }
 
 @[inline]
 def fail (msg : String) : M α :=
-  let err : Parser α := Std.Internal.Parsec.fail msg
-  liftM err
+  throw (.userError msg)
 
 @[inline]
 def getName (nidx : Nat) : M Lean.Name := do
@@ -83,8 +83,8 @@ def addConst (name : Lean.Name) (d : Lean.ConstantInfo) : M Unit := do
     }
 
 @[inline]
-def parseJsonObj : M (Std.TreeMap.Raw String Json) := do
-  let (.obj obj) ← Json.Parser.anyCore | fail "Expected JSON object"
+def parseJsonObj (line : String) : M (Std.TreeMap.Raw String Json) := do
+  let .ok (.obj obj) := Json.Parser.anyCore.run line | fail "Expected JSON object"
   return obj
 
 @[inline]
@@ -483,8 +483,8 @@ def parseRecInfo (obj : Std.TreeMap.Raw String Json) : M Unit := do
     isUnsafe,
   }
 
-def parseItem : M Unit := do
-  let obj ← parseJsonObj
+def parseItem (line : String) : M Unit := do
+  let obj ← parseJsonObj line
   if obj.contains "str" then
     parseNameStr obj
   else if obj.contains "num" then
@@ -537,21 +537,19 @@ def parseItem : M Unit := do
     parseRecInfo obj
   else
     fail s!"Unknown export object: {obj.keys}"
-  ws
 
 
 partial def parseItems : M Unit :=
   go
 where
   go : M Unit := do
-    if ← isEof (ι := Sigma String.Pos) then
-      return ()
-    else
-      parseItem
+    let line ← (← get).stream.getLine
+    unless line.isEmpty do
+      parseItem line
       go
 
 def parseMdata : M Unit := do
-  discard <| parseJsonObj
+  let _line ← (← get).stream.getLine
 
 def parseFile : M Unit := do
   parseMdata
@@ -559,12 +557,17 @@ def parseFile : M Unit := do
 
 end Parse
 
-def parse (input : String) : Except String ExportedEnv := do
-  let (_, state) ← Parse.M.run Parse.parseFile input
+def parseStream (stream : IO.FS.Stream) : IO ExportedEnv := do
+  let (_, state) ← Parse.M.run Parse.parseFile stream
   let { constMap, constOrder, .. } := state
   return {
     constMap,
     constOrder,
   }
+
+-- We cannot turn pure Strings into Streams?
+-- def parse (input : String) : Except String ExportedEnv := do
+--   parseStream (IO.FS.Stream.ofString input)
+
 
 end Export
