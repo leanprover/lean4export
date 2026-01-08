@@ -228,8 +228,8 @@ def parseExprForallE (obj : Std.TreeMap.Raw String Json) : M Unit := do
 def parseExprLetE (obj : Std.TreeMap.Raw String Json) : M Unit := do
   let idx ← fetchIndex obj
   let some (.obj data) := obj["letE"]? | fail s!"Expr.letE {idx} invalid"
-  let some (.num (binderNameIdx : Nat)) := data["binderName"]? | fail s!"Expr.letE {idx} invalid"
-  let some (.num (binderTypeIdx : Nat)) := data["binderType"]? | fail s!"Expr.letE {idx} invalid"
+  let some (.num (binderNameIdx : Nat)) := data["declName"]? | fail s!"Expr.letE {idx} invalid"
+  let some (.num (binderTypeIdx : Nat)) := data["type"]? | fail s!"Expr.letE {idx} invalid"
   let some (.num (valueIdx : Nat)) := data["value"]? | fail s!"Expr.letE {idx} invalid"
   let some (.num (bodyIdx : Nat)) := data["body"]? | fail s!"Expr.letE {idx} invalid"
   let some (.bool nondep) := data["nondep"]? | fail s!"Expr.letE {idx} invalid"
