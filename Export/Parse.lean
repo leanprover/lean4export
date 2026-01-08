@@ -348,7 +348,8 @@ def parseOpaqueInfo (obj : Std.TreeMap.Raw String Json) : M Unit := do
   let some (.arr levelParamsIdxs) := data["levelParams"]? | fail s!"opaqueInfo invalid"
   let some (.num (typeIdx : Nat)) := data["type"]? | fail s!"opaqueInfo invalid"
   let some (.num (valueIdx : Nat)) := data["value"]? | fail s!"opaqueInfo invalid"
-  let some (.bool isUnsafe) := data["isUnsafe"]? | fail s!"axiomInfo invalid"
+  -- Work around until the exporter always includes isUnsafe
+  let (.bool isUnsafe) := data["isUnsafe"]?.getD (.bool false) | fail s!"axiomInfo invalid"
   let some (.arr allIdxs) := data["all"]? | fail s!"opaqueInfo invalid"
 
   let name ← getName nameIdx
@@ -360,11 +361,11 @@ def parseOpaqueInfo (obj : Std.TreeMap.Raw String Json) : M Unit := do
   addConst name <| .opaqueInfo { name, levelParams, type, value, all, isUnsafe }
 
 def parseQuotInfo (obj : Std.TreeMap.Raw String Json) : M Unit := do
-  let some (.obj data) := obj["quotInfo"]? | fail s!"opaqueInfo invalid"
-  let some (.num (nameIdx : Nat)) := data["name"]? | fail s!"opaqueInfo invalid"
-  let some (.arr levelParamsIdxs) := data["levelParams"]? | fail s!"opaqueInfo invalid"
-  let some (.num (typeIdx : Nat)) := data["type"]? | fail s!"opaqueInfo invalid"
-  let some (.str kindStr) := data["kind"]? | fail s!"opaqueInfo invalid"
+  let some (.obj data) := obj["quotInfo"]? | fail s!"quotInfo invalid"
+  let some (.num (nameIdx : Nat)) := data["name"]? | fail s!"quotInfo invalid"
+  let some (.arr levelParamsIdxs) := data["levelParams"]? | fail s!"quotInfo invalid"
+  let some (.num (typeIdx : Nat)) := data["type"]? | fail s!"quotInfo invalid"
+  let some (.str kindStr) := data["kind"]? | fail s!"quotInfo invalid"
 
   let name ← getName nameIdx
   let levelParams ← getNameList levelParamsIdxs
