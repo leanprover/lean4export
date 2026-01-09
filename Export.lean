@@ -68,18 +68,18 @@ IFF it's been seen before, return its index within the export file
 IFF it has not been seen before, add it to the cache, print it into the export, and return its cache index.
 -/
 @[inline]
-def getIdx [Hashable α] [BEq α] (x : α) (getM : State → HashMap α Nat) (setM : State → HashMap α Nat → State) (rec : M Json) : M Nat := do
+def getIdx [Hashable α] [BEq α] (x : α) (namespaced: String) (getM : State → HashMap α Nat) (setM : State → HashMap α Nat → State) (rec : M Json) : M Nat := do
   let m ← getM <$> get
   if let some idx := m[x]? then
     return idx
   let s ← rec
   let m ← getM <$> get
   let idx := m.size
-  IO.println (s.setObjVal! "i" idx).compress
+  IO.println (s.setObjVal! namespaced idx).compress
   modify fun st => setM st ((getM st).insert x idx)
   return idx
 
-def dumpName (n : Name) : M Nat := getIdx n (·.visitedNames) ({ · with visitedNames := · }) do
+def dumpName (n : Name) : M Nat := getIdx n "in" (·.visitedNames) ({ · with visitedNames := · }) do
   match n with
   | .anonymous => unreachable!
   | .str n s =>
@@ -97,7 +97,7 @@ def dumpName (n : Name) : M Nat := getIdx n (·.visitedNames) ({ · with visited
       ])
     ]
 
-def dumpLevel (l : Level) : M Nat := getIdx l (·.visitedLevels) ({ · with visitedLevels := · }) do
+def dumpLevel (l : Level) : M Nat := getIdx l "il" (·.visitedLevels) ({ · with visitedLevels := · }) do
   match l with
   | .zero | .mvar _ => unreachable!
   | .succ l => return .mkObj [("succ", ← dumpLevel l)]
@@ -135,7 +135,7 @@ def removeMData (e : Expr) : M Expr := do
   pure e'
 
 partial def dumpExprAux (e : Expr) : M Nat := do
-  getIdx e (·.visitedExprs) ({ · with visitedExprs := · }) do
+  getIdx e "ie" (·.visitedExprs) ({ · with visitedExprs := · }) do
     match e with
     | .fvar .. | .mvar .. => panic! "cannot export free variables or metavariables"
     | .mdata a e' =>
@@ -145,13 +145,13 @@ partial def dumpExprAux (e : Expr) : M Nat := do
             ("expr", ← dumpExprAux e')
         ])
       ]
-    | .bvar i => return .mkObj [("bvar", .mkObj [("deBruijnIndex", i)])]
+    | .bvar i => return .mkObj [("bvar", i)]
     | .lit (.natVal i) => return .mkObj [("natVal", s!"{i}")]
     | .lit (.strVal s) => return .mkObj [("strVal", s)]
-    | .sort l => return .mkObj [("sort", .mkObj [("u", ← dumpLevel l)])]
+    | .sort l => return .mkObj [("sort", ← dumpLevel l)]
     | .const n us => return .mkObj [
       ("const", .mkObj [
-        ("declName", ← dumpName n),
+        ("name", ← dumpName n),
         ("us", (← us.mapM dumpLevel).toJson)
       ])
     ]
@@ -163,23 +163,23 @@ partial def dumpExprAux (e : Expr) : M Nat := do
     ]
     | .lam n d b bi => return .mkObj [
       ("lam", .mkObj [
-        ("binderName", ← dumpName n),
-        ("binderType", ← dumpExprAux d),
+        ("name", ← dumpName n),
+        ("type", ← dumpExprAux d),
         ("body", ← dumpExprAux b),
         ("binderInfo", bi.toJson)
       ])
     ]
     | .forallE n d b bi => return .mkObj [
       ("forallE", .mkObj [
-        ("binderName", ← dumpName n),
-        ("binderType", ← dumpExprAux d),
+        ("name", ← dumpName n),
+        ("type", ← dumpExprAux d),
         ("body", ← dumpExprAux b),
         ("binderInfo", bi.toJson)
       ])
     ]
     | .letE n d v b nondep => return .mkObj [
       ("letE", .mkObj [
-        ("declName", ← dumpName n),
+        ("name", ← dumpName n),
         ("type", ← dumpExprAux d),
         ("value", ← dumpExprAux v),
         ("body", ← dumpExprAux b),
@@ -251,7 +251,8 @@ partial def dumpConstant (c : Name) : M Unit := do
         ("levelParams", ← dumpUparams val.levelParams),
         ("type", ← dumpExpr val.type),
         ("value", ← dumpExpr val.value),
-        ("all", ← dumpNames val.all)
+        ("all", ← dumpNames val.all),
+        ("isUnsafe", val.isUnsafe)
       ])
     ] |>.compress
   | .quotInfo val =>

@@ -25,7 +25,7 @@ Name.str
         "pre": integer,
         "str": string
     },
-    "i": integer,
+    "in": integer,
 }
 ```
 
@@ -36,7 +36,7 @@ Name.num
         "pre": integer,
         "i": integer
     }
-    "i": integer,
+    "in": integer,
 }
 ```
 
@@ -44,7 +44,7 @@ Level.succ
 ```
 {
     "succ": integer
-    "i": integer,
+    "il": integer,
 }
 ```
 
@@ -52,7 +52,7 @@ Level.max
 ```
 {
     "max": [integer, integer],
-    "i": integer,
+    "il": integer,
 }
 ```
 
@@ -60,7 +60,7 @@ Level.imax
 ```
 {
     "imax": [integer, integer],
-    "i": integer,
+    "il": integer,
 }
 
 ```
@@ -69,17 +69,15 @@ Level.param
 ```
 {
     "param": integer,
-    "i": integer,
+    "il": integer,
 }
 ```
 
 Expr.bvar
 ```
 {
-  "bvar": {
-    "deBruijnIndex": integer
-  }
-  "i": integer,
+  "bvar": integer,
+  "ie": integer,
 }
 ```
 
@@ -87,10 +85,8 @@ Expr.bvar
 Expr.sort
 ```
 {
-    "sort": {
-        "u": integer
-    }
-    "i": integer,
+    "sort": integer,
+    "ie": integer,
 }
 ```
 
@@ -98,10 +94,10 @@ Expr.const
 ```
 {
     "const": {
-        "declName": integer,
+        "name": integer,
         "us": Array<integer>
     }
-    "i": integer,
+    "ie": integer,
 }
 ```
 
@@ -112,7 +108,7 @@ Expr.app
         "fn": number,
         "arg": number
     }
-    "i": integer,
+    "ie": integer,
 }
 ```
 
@@ -120,12 +116,12 @@ Expr.lam
 ```
 {
     "lam":  {
-        "binderName": integer,
-        "binderType": integer,
+        "name": integer,
+        "type": integer,
         "body": integer,
         "binderInfo": "default" | "implicit" | "strictImplicit" | "instImplicit"
     }
-    "i": integer,
+    "ie": integer,
 }
 ```
 
@@ -133,12 +129,12 @@ Expr.forallE
 ```
 {
     "forallE":  {
-        "binderName": integer,
-        "binderType": integer,
+        "name": integer,
+        "type": integer,
         "body": integer,
         "binderInfo": "default" | "implicit" | "strictImplicit" | "instImplicit"
     }
-    "i": integer,
+    "ie": integer,
 }
 
 ```
@@ -147,13 +143,13 @@ Expr.letE
 ```
 {
     "letE": {
-        "declName": integer,
+        "name": integer,
         "type": integer,
         "value": integer,
         "body": integer,
         "nondep": boolean
     }
-    "i": integer,
+    "ie": integer,
 }
 ```
 
@@ -165,7 +161,7 @@ Expr.proj
         "idx": integer,
         "struct": integer
     }
-    "i": integer,
+    "ie": integer,
 }
 ```
  
@@ -173,7 +169,7 @@ Expr.lit (Literal.natVal)
 ```
 {
     "natVal": string,
-    "i": integer
+    "ie": integer
 }
 ```
 
@@ -181,7 +177,7 @@ Expr.lit (Literal.strVal)
 ```
 {
     "strVal": string,
-    "i": integer,
+    "ie": integer,
 }
 ```
 
@@ -192,7 +188,7 @@ Expr.mdata
         "expr": integer,
         "data": object
     },
-    "i": integer
+    "ie": integer
 }
 ```
 
