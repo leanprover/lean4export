@@ -236,7 +236,7 @@ def parseExprLetE (obj : Std.TreeMap.Raw String Json) : M Unit := do
 
   let binderName ← getName binderNameIdx
   let binderType ← getExpr binderTypeIdx
-  let value ← getExpr bodyIdx
+  let value ← getExpr valueIdx
   let body ← getExpr bodyIdx
 
   addExpr idx (.letE binderName binderType value body nondep)
