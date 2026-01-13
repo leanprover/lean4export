@@ -196,7 +196,7 @@ partial def dumpExprAux (e : Expr) : M Nat := do
 
 def dumpExpr (e : Expr) : M Nat := do
   let aux (e : Expr) : M Expr := do
-    modify (fun st => { st with noMDataExprs := HashMap.emptyWithCapacity 100000 })
+    modify (fun st => { st with noMDataExprs := HashMap.emptyWithCapacity })
     removeMData e
   dumpExprAux <| ← if (← get).exportMData then pure e else aux e
 
