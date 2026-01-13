@@ -68,42 +68,45 @@ IFF it's been seen before, return its index within the export file
 IFF it has not been seen before, add it to the cache, print it into the export, and return its cache index.
 -/
 @[inline]
-def getIdx [Hashable α] [BEq α] (x : α) (getM : State → HashMap α Nat) (setM : State → HashMap α Nat → State) (rec : M Json) : M Nat := do
+def getIdx [Hashable α] [BEq α] (x : α) (getM : State → HashMap α Nat) (modM : State → (HashMap α Nat → HashMap α Nat) → State) (rec : M (Nat → String)) : M Nat := do
   let m ← getM <$> get
   if let some idx := m[x]? then
     return idx
   let s ← rec
   let m ← getM <$> get
   let idx := m.size
-  IO.println (s.setObjVal! "i" idx).compress
-  modify fun st => setM st ((getM st).insert x idx)
+  IO.println (s idx)
+  modify fun st => modM st (·.insert x idx)
   return idx
 
-def dumpName (n : Name) : M Nat := getIdx n (·.visitedNames) ({ · with visitedNames := · }) do
+def withIdx (o : List (String × Json)) : Nat → String := fun n =>
+  Json.compress (Json.mkObj (("i", n) :: o))
+
+def dumpName (n : Name) : M Nat := getIdx n (·.visitedNames) (fun s f => { s with visitedNames := f s.visitedNames }) do
   match n with
   | .anonymous => unreachable!
   | .str n s =>
-    return .mkObj [
+    return withIdx [
       ("str", .mkObj [
         ("pre", ← dumpName n),
         ("str", s)
       ])
     ]
   | .num n i =>
-    return .mkObj [
+    return withIdx [
       ("num", .mkObj [
         ("pre", ← dumpName n),
         ("i", i)
       ])
     ]
 
-def dumpLevel (l : Level) : M Nat := getIdx l (·.visitedLevels) ({ · with visitedLevels := · }) do
+def dumpLevel (l : Level) : M Nat := getIdx l (·.visitedLevels) (fun s f => { s with visitedLevels := f s.visitedLevels }) do
   match l with
   | .zero | .mvar _ => unreachable!
-  | .succ l => return .mkObj [("succ", ← dumpLevel l)]
-  | .max l1 l2 => return .mkObj [("max", Json.arr #[← dumpLevel l1, ← dumpLevel l2])]
-  | .imax l1 l2 => return .mkObj [("imax", Json.arr #[← dumpLevel l1, ← dumpLevel l2])]
-  | .param n => return .mkObj [("param", ← dumpName n)]
+  | .succ l => return withIdx [("succ", ← dumpLevel l)]
+  | .max l1 l2 => return withIdx [("max", Json.arr #[← dumpLevel l1, ← dumpLevel l2])]
+  | .imax l1 l2 => return withIdx [("imax", Json.arr #[← dumpLevel l1, ← dumpLevel l2])]
+  | .param n => return withIdx [("param", ← dumpName n)]
 
 def dumpUparams (uparams : List Name) : M Json := do
   let nameIdxs ← uparams.mapM dumpName
@@ -135,33 +138,28 @@ def removeMData (e : Expr) : M Expr := do
   pure e'
 
 partial def dumpExprAux (e : Expr) : M Nat := do
-  getIdx e (·.visitedExprs) ({ · with visitedExprs := · }) do
+  getIdx e (·.visitedExprs) (fun s f => { s with visitedExprs := f s.visitedExprs }) do
     match e with
     | .fvar .. | .mvar .. => panic! "cannot export free variables or metavariables"
     | .mdata a e' =>
-      return .mkObj [
+      return withIdx [
         ("mdata", .mkObj [
             ("data", a.toJson),
             ("expr", ← dumpExprAux e')
         ])
       ]
-    | .bvar i => return .mkObj [("bvar", .mkObj [("deBruijnIndex", i)])]
-    | .lit (.natVal i) => return .mkObj [("natVal", s!"{i}")]
-    | .lit (.strVal s) => return .mkObj [("strVal", s)]
-    | .sort l => return .mkObj [("sort", .mkObj [("u", ← dumpLevel l)])]
-    | .const n us => return .mkObj [
+    | .bvar i => return (s!"\{\"i\":{·},\"bvar\":\{\"deBruijnIndex\":{i}}}")
+    | .lit (.natVal i) => return withIdx [("natVal", s!"{i}")]
+    | .lit (.strVal s) => return withIdx [("strVal", s)]
+    | .sort l => return withIdx [("sort", .mkObj [("u", ← dumpLevel l)])]
+    | .const n us => return withIdx [
       ("const", .mkObj [
         ("declName", ← dumpName n),
         ("us", (← us.mapM dumpLevel).toJson)
       ])
     ]
-    | .app f a => return .mkObj [
-      ("app", .mkObj [
-        ("fn", ← dumpExprAux f),
-        ("arg", ← dumpExprAux a)
-      ])
-    ]
-    | .lam n d b bi => return .mkObj [
+    | .app f a => return (s!"\{\"i\":{·},\"app\":\{\"fn\":{← dumpExprAux f},\"arg\":{← dumpExprAux a}}}")
+    | .lam n d b bi => return withIdx [
       ("lam", .mkObj [
         ("binderName", ← dumpName n),
         ("binderType", ← dumpExprAux d),
@@ -169,7 +167,7 @@ partial def dumpExprAux (e : Expr) : M Nat := do
         ("binderInfo", bi.toJson)
       ])
     ]
-    | .forallE n d b bi => return .mkObj [
+    | .forallE n d b bi => return withIdx [
       ("forallE", .mkObj [
         ("binderName", ← dumpName n),
         ("binderType", ← dumpExprAux d),
@@ -177,7 +175,7 @@ partial def dumpExprAux (e : Expr) : M Nat := do
         ("binderInfo", bi.toJson)
       ])
     ]
-    | .letE n d v b nondep => return .mkObj [
+    | .letE n d v b nondep => return withIdx [
       ("letE", .mkObj [
         ("declName", ← dumpName n),
         ("type", ← dumpExprAux d),
@@ -186,7 +184,7 @@ partial def dumpExprAux (e : Expr) : M Nat := do
         ("nondep", nondep)
       ])
     ]
-    | .proj s i e => return .mkObj [
+    | .proj s i e => return withIdx [
       ("proj", .mkObj [
         ("typeName", ← dumpName s),
         ("idx", i),
