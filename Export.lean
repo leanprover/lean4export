@@ -51,7 +51,7 @@ structure State where
   visitedLevels : HashMap Level Nat := HashMap.emptyWithCapacity 1000 |>.insert .zero 0
   visitedExprs : HashMap Expr Nat := HashMap.emptyWithCapacity 10000000
   visitedConstants : NameHashSet := {}
-  noMDataExprs : HashMap Expr Expr := HashMap.emptyWithCapacity 100000
+  noMDataExprs : HashMap ExprStructEq Expr := HashMap.emptyWithCapacity
   exportMData : Bool := false
   exportUnsafe : Bool := false
 
@@ -115,7 +115,7 @@ def dumpNames (uparams : List Name) : M Json := do
   return nameIdxs.toJson
 
 def removeMData (e : Expr) : M Expr := do
-  if let some x := (← get).noMDataExprs[e]? then
+  if let some x := (← get).noMDataExprs[ExprStructEq.mk e]? then
     return x
   let e' ← match e with
   | .mdata _ e' => removeMData e'
@@ -131,7 +131,7 @@ def removeMData (e : Expr) : M Expr := do
     pure <| e.updateForallE! (← removeMData d) (← removeMData b)
   | .proj _ _ e2 =>
     pure <| e.updateProj! (← removeMData e2)
-  modify (fun st => { st with noMDataExprs := st.noMDataExprs.insert e e' })
+  modify (fun st => { st with noMDataExprs := st.noMDataExprs.insert ⟨e⟩ e' })
   pure e'
 
 partial def dumpExprAux (e : Expr) : M Nat := do
