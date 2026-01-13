@@ -102,7 +102,9 @@ info: {"in":1,"str":{"pre":0,"str":"id"}}
 {"defnInfo":{"all":[1],"hints":{"regular":1},"levelParams":[2],"name":1,"safety":"safe","type":4,"value":6}}
 -/
 #guard_msgs in
-#eval run <| dumpConstant `id
+#eval run <| do
+  let _ ← initState (← read).env
+  dumpConstant `id
 
 /--
 info: {"in":1,"str":{"pre":0,"str":"List"}}
@@ -114,12 +116,10 @@ info: {"in":1,"str":{"pre":0,"str":"List"}}
 {"forallE":{"binderInfo":"default","body":0,"name":3,"type":0},"ie":1}
 {"in":4,"str":{"pre":1,"str":"nil"}}
 {"in":5,"str":{"pre":1,"str":"cons"}}
-{"inductInfo":{"all":[1],"ctors":[4,5],"isRec":true,"isReflexive":false,"isUnsafe":false,"levelParams":[2],"name":1,"numIndices":0,"numNested":0,"numParams":1,"type":1}}
 {"const":{"name":1,"us":[1]},"ie":2}
 {"bvar":0,"ie":3}
 {"app":{"arg":3,"fn":2},"ie":4}
 {"forallE":{"binderInfo":"implicit","body":4,"name":3,"type":0},"ie":5}
-{"ctorInfo":{"cidx":0,"induct":1,"isUnsafe":false,"levelParams":[2],"name":4,"numFields":0,"numParams":1,"type":5}}
 {"in":6,"str":{"pre":0,"str":"head"}}
 {"in":7,"str":{"pre":0,"str":"tail"}}
 {"bvar":1,"ie":6}
@@ -129,7 +129,60 @@ info: {"in":1,"str":{"pre":0,"str":"List"}}
 {"forallE":{"binderInfo":"default","body":9,"name":7,"type":7},"ie":10}
 {"forallE":{"binderInfo":"default","body":10,"name":6,"type":3},"ie":11}
 {"forallE":{"binderInfo":"implicit","body":11,"name":3,"type":0},"ie":12}
-{"ctorInfo":{"cidx":1,"induct":1,"isUnsafe":false,"levelParams":[2],"name":5,"numFields":2,"numParams":1,"type":12}}
+{"in":8,"str":{"pre":1,"str":"rec"}}
+{"in":9,"str":{"pre":0,"str":"u_1"}}
+{"il":3,"param":9}
+{"in":10,"str":{"pre":0,"str":"motive"}}
+{"in":11,"str":{"pre":0,"str":"t"}}
+{"ie":13,"sort":3}
+{"forallE":{"binderInfo":"default","body":13,"name":11,"type":4},"ie":14}
+{"in":12,"str":{"pre":0,"str":"nil"}}
+{"const":{"name":4,"us":[1]},"ie":15}
+{"app":{"arg":6,"fn":15},"ie":16}
+{"app":{"arg":16,"fn":3},"ie":17}
+{"in":13,"str":{"pre":0,"str":"cons"}}
+{"bvar":3,"ie":18}
+{"app":{"arg":18,"fn":2},"ie":19}
+{"in":14,"str":{"pre":0,"str":"tail_ih"}}
+{"app":{"arg":3,"fn":18},"ie":20}
+{"bvar":4,"ie":21}
+{"const":{"name":5,"us":[1]},"ie":22}
+{"bvar":5,"ie":23}
+{"app":{"arg":23,"fn":22},"ie":24}
+{"app":{"arg":8,"fn":24},"ie":25}
+{"app":{"arg":6,"fn":25},"ie":26}
+{"app":{"arg":26,"fn":21},"ie":27}
+{"forallE":{"binderInfo":"default","body":27,"name":14,"type":20},"ie":28}
+{"forallE":{"binderInfo":"default","body":28,"name":7,"type":19},"ie":29}
+{"forallE":{"binderInfo":"default","body":29,"name":6,"type":8},"ie":30}
+{"forallE":{"binderInfo":"default","body":20,"name":11,"type":19},"ie":31}
+{"forallE":{"binderInfo":"default","body":31,"name":13,"type":30},"ie":32}
+{"forallE":{"binderInfo":"default","body":32,"name":12,"type":17},"ie":33}
+{"forallE":{"binderInfo":"implicit","body":33,"name":10,"type":14},"ie":34}
+{"forallE":{"binderInfo":"implicit","body":34,"name":3,"type":0},"ie":35}
+{"ie":36,"lam":{"binderInfo":"default","body":6,"name":13,"type":30}}
+{"ie":37,"lam":{"binderInfo":"default","body":36,"name":12,"type":17}}
+{"ie":38,"lam":{"binderInfo":"default","body":37,"name":10,"type":14}}
+{"ie":39,"lam":{"binderInfo":"default","body":38,"name":3,"type":0}}
+{"app":{"arg":21,"fn":2},"ie":40}
+{"app":{"arg":6,"fn":8},"ie":41}
+{"app":{"arg":3,"fn":41},"ie":42}
+{"const":{"name":8,"us":[3,1]},"ie":43}
+{"app":{"arg":23,"fn":43},"ie":44}
+{"app":{"arg":21,"fn":44},"ie":45}
+{"app":{"arg":18,"fn":45},"ie":46}
+{"app":{"arg":8,"fn":46},"ie":47}
+{"app":{"arg":3,"fn":47},"ie":48}
+{"app":{"arg":48,"fn":42},"ie":49}
+{"ie":50,"lam":{"binderInfo":"default","body":49,"name":7,"type":40}}
+{"ie":51,"lam":{"binderInfo":"default","body":50,"name":6,"type":18}}
+{"ie":52,"lam":{"binderInfo":"default","body":51,"name":13,"type":30}}
+{"ie":53,"lam":{"binderInfo":"default","body":52,"name":12,"type":17}}
+{"ie":54,"lam":{"binderInfo":"default","body":53,"name":10,"type":14}}
+{"ie":55,"lam":{"binderInfo":"default","body":54,"name":3,"type":0}}
+{"inductive":{"constructorVals":[{"cidx":0,"induct":1,"isUnsafe":false,"levelParams":[2],"name":4,"numFields":0,"numParams":1,"type":5},{"cidx":1,"induct":1,"isUnsafe":false,"levelParams":[2],"name":5,"numFields":2,"numParams":1,"type":12}],"inductiveVals":[{"all":[1],"ctors":[4,5],"isRec":true,"isReflexive":false,"isUnsafe":false,"levelParams":[2],"name":1,"numIndices":0,"numNested":0,"numParams":1,"type":1}],"recursorVals":[{"all":[1],"isUnsafe":false,"k":false,"levelParams":[9,2],"name":8,"numIndices":0,"numMinors":2,"numMotives":1,"numParams":1,"rules":[{"ctor":4,"nfields":0,"rhs":39},{"ctor":5,"nfields":2,"rhs":55}],"type":35}]}}
 -/
 #guard_msgs in
-#eval run <| dumpConstant `List
+#eval run <| do
+  let _ ← initState (← read).env
+  dumpConstant `List

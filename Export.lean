@@ -29,20 +29,6 @@ def Lean.DefinitionSafety.toJson : DefinitionSafety → Json
 def Lean.KVMap.toJson (kvs: Lean.KVMap) : Json :=
   .mkObj <| kvs.entries.map (fun (k, v) => (k.toString, reprStr v))
 
-def Nat.toBytesLE (n : Nat) : ByteArray :=
-  if n = 0 then
-    ByteArray.empty.push 0
-  else
-    let rec aux (n : Nat) (acc : ByteArray) : ByteArray :=
-      if n = 0 then
-        acc
-      else
-        aux (n / 256) (acc.push <| UInt8.ofNat <| n % 256)
-    aux n ByteArray.empty
-
-instance : ToJson UInt8 where
-  toJson n := ToJson.toJson n.toNat
-
 structure Context where
   env : Environment
 
@@ -54,6 +40,9 @@ structure State where
   noMDataExprs : HashMap Expr Expr := HashMap.emptyWithCapacity 100000
   exportMData : Bool := false
   exportUnsafe : Bool := false
+  /-- Maps the name of an inductive type to a list of names of corresponding recursors.
+  This is used to facilitate exporting of related inductives, constructors, and recursors as a unit. -/
+  recursorMap : NameMap NameSet := {}
 
 abbrev M := ReaderT Context <| StateT State IO
 
@@ -61,6 +50,28 @@ def M.run (env : Environment) (act : M α) : IO α :=
   StateT.run' (s := {}) do
     ReaderT.run (r := { env }) do
       act
+
+/--
+Initialize the exporter state from an environment and cli options.
+The `recursorMap` maps each inductive declaration's name to the list
+of relevant recursors, which is used to ensure that for any inductive
+declaration, the inductives, constructors, and recursors are exported
+together in that order.
+-/
+def initState (env : Environment) (cliOptions : List String := []) : M Unit := do
+  let mut recursorMap : NameMap NameSet := {}
+  for (_, constInfo) in env.constants do
+    if let .recInfo recVal := constInfo then
+      for indName in recVal.all do
+        recursorMap := recursorMap.alter indName <|
+          fun
+          | none => some <| NameSet.empty.insert recVal.name
+          | some recNames => some <| recNames.insert recVal.name
+  modify fun st => { st with
+    exportMData  := cliOptions.any  (· == "--export-mdata")
+    exportUnsafe := cliOptions.any (· == "--export-unsafe")
+    recursorMap
+  }
 
 /--
 For a given primitive (name, level, expr) to be exported:
@@ -196,7 +207,7 @@ partial def dumpExprAux (e : Expr) : M Nat := do
 
 def dumpExpr (e : Expr) : M Nat := do
   let aux (e : Expr) : M Expr := do
-    modify (fun st => { st with noMDataExprs := HashMap.emptyWithCapacity 100000 })
+    modify (fun st => { st with noMDataExprs := HashMap.emptyWithCapacity })
     removeMData e
   dumpExprAux <| ← if (← get).exportMData then pure e else aux e
 
@@ -265,63 +276,103 @@ partial def dumpConstant (c : Name) : M Unit := do
         ("kind", val.kind.toJson)
       ])
     ] |>.compress
-  | .inductInfo val => do
-    dumpDeps val.type
+  | .inductInfo baseIndVal => do
+    let mut indVals := #[]
+    let mut ctorVals := #[]
+    let mut recursorNames := NameSet.empty
+
+    for indName in baseIndVal.all do
+      let val := ((← read).env.find? indName |>.get!).inductiveVal!
+      indVals := indVals.push val
+      for ctor in val.ctors do
+        match ((← read).env.find? ctor |>.get!) with
+        | .ctorInfo ctorVal => ctorVals := ctorVals.push ctorVal
+        | _ => panic! "Expected a `ConstantInfo.ctorInfo`."
+      modify fun st => { st with visitedConstants:= st.visitedConstants.insert indName }
+      dumpDeps val.type
+      if let .some names := (← get).recursorMap.get? baseIndVal.name
+      then recursorNames := recursorNames.union names
+      else assert! ctorVals.size == 0
+
+    /- We dump the constructor dependencies (which will not include the inductives in this block since we've
+    added the names to `visitedConstants`) before actually outputting anything in this inductive block to
+    ensure e.g. the `LT` in `Fin.mk` is dumped before this inductive block appears in the export file. -/
+    for ctorVal in ctorVals do
+      modify fun st => { st with visitedConstants:= st.visitedConstants.insert ctorVal.name }
+      dumpDeps ctorVal.type
+
+    let mut recursorVals := #[]
+    for recursorName in recursorNames do
+      match ((← read).env.find? recursorName |>.get!) with
+      | .recInfo x => recursorVals := recursorVals.push x
+      | _ => panic! "expected a `constantinfo.recinfo`."
+
+    for recursorVal in recursorVals do
+      modify fun st => { st with visitedConstants:= st.visitedConstants.insert recursorVal.name }
+      dumpDeps recursorVal.type
+
+    /- We only dump these after we've already dumped the `recursorVal` type and added the name
+    to `visitedConstants` so that `dumpDeps` does not retry dumping the appearance of `Foo.rec` -/
+    for recursorVal in recursorVals do
+      for rule in recursorVal.rules do
+        dumpDeps rule.rhs
+
+    let inductiveValsJson ← indVals.mapM <| fun indVal => do
+      pure <| Json.mkObj [
+          ("name", ← dumpName indVal.name),
+          ("levelParams", ← dumpUparams indVal.levelParams),
+          ("type", ← dumpExpr indVal.type),
+          ("numParams", indVal.numParams),
+          ("numIndices", indVal.numIndices),
+          ("all", ← dumpNames indVal.all),
+          ("ctors", ← dumpNames indVal.ctors),
+          ("numNested", indVal.numNested),
+          ("isRec", indVal.isRec),
+          ("isReflexive", indVal.isReflexive),
+          ("isUnsafe", indVal.isUnsafe),
+      ]
+    let ctorValsJson ← ctorVals.mapM <| fun ctorVal => do
+      pure <| Json.mkObj [
+          ("name", ← dumpName ctorVal.name),
+          ("levelParams", ← dumpUparams ctorVal.levelParams),
+          ("type", ← dumpExpr ctorVal.type),
+          ("induct", ← dumpName ctorVal.induct),
+          ("cidx", ctorVal.cidx),
+          ("numParams", ctorVal.numParams),
+          ("numFields", ctorVal.numFields),
+          ("isUnsafe", ctorVal.isUnsafe)
+      ]
+    let recursorValsJson ← recursorVals.mapM <| fun recursorVal => do
+      pure <| Json.mkObj [
+          ("name", ← dumpName recursorVal.name),
+          ("levelParams", ← dumpUparams recursorVal.levelParams),
+          ("type", ← dumpExpr recursorVal.type),
+          ("all", ← dumpNames recursorVal.all),
+          ("numParams", recursorVal.numParams),
+          ("numIndices", recursorVal.numIndices),
+          ("numMotives", recursorVal.numMotives),
+          ("numMinors", recursorVal.numMinors),
+          ("rules", (← recursorVal.rules.mapM dumpRecRule).toJson),
+          ("k", recursorVal.k),
+          ("isUnsafe", recursorVal.isUnsafe),
+      ]
     IO.println <| Json.mkObj [
-      ("inductInfo", .mkObj [
-        ("name", ← dumpName val.name),
-        ("levelParams", ← dumpUparams val.levelParams),
-        ("type", ← dumpExpr val.type),
-        ("numParams", val.numParams),
-        ("numIndices", val.numIndices),
-        ("all", ← dumpNames val.all),
-        ("ctors", ← dumpNames val.ctors),
-        ("numNested", val.numNested),
-        ("isRec", val.isRec),
-        ("isReflexive", val.isReflexive),
-        ("isUnsafe", val.isUnsafe),
+      ("inductive", Json.mkObj [
+        ("inductiveVals", inductiveValsJson.toJson),
+        ("constructorVals", ctorValsJson.toJson),
+        ("recursorVals", recursorValsJson.toJson),
       ])
     ] |>.compress
-    for ctor in val.ctors do
-      dumpConstant ctor
-  | .ctorInfo val =>
-    dumpDeps val.type
-    IO.println <| Json.mkObj [
-      ("ctorInfo", .mkObj [
-        ("name", ← dumpName val.name),
-        ("levelParams", ← dumpUparams val.levelParams),
-        ("type", ← dumpExpr val.type),
-        ("induct", ← dumpName val.induct),
-        ("cidx", val.cidx),
-        ("numParams", val.numParams),
-        ("numFields", val.numFields),
-        ("isUnsafe", val.isUnsafe)
-      ])
-    ] |>.compress
+  | .ctorInfo val => dumpConstant val.induct
   | .recInfo val =>
-    dumpDeps val.type
-    IO.println <| Json.mkObj [
-      ("recInfo", .mkObj [
-        ("name", ← dumpName val.name),
-        ("levelParams", ← dumpUparams val.levelParams),
-        ("type", ← dumpExpr val.type),
-        ("all", ← dumpNames val.all),
-        ("numParams", val.numParams),
-        ("numIndices", val.numIndices),
-        ("numMotives", val.numMotives),
-        ("numMinors", val.numMinors),
-        ("rules", (← val.rules.mapM dumpRecRule).toJson),
-        ("k", val.k),
-        ("isUnsafe", val.isUnsafe),
-      ])
-    ] |>.compress
+    for indName in val.all do
+      dumpConstant indName
 where
   dumpDeps e := do
     for c in e.getUsedConstants do
       dumpConstant c
   /- Return these for inclusion inline with the exported `recInfo`. -/
   dumpRecRule (rule : RecursorRule) : M Json := do
-    dumpDeps (rule.rhs)
     return Json.mkObj [
       ("ctor", ← dumpName rule.ctor),
       ("nfields", rule.nfields),

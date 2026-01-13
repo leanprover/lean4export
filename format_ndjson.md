@@ -16,7 +16,7 @@ Initial metadata object
 }
 ```
 
-followed by a sequence of primitives with integer tags (Name, Level, or Expr) and declartions (axiom, definition, theorem, opaque, quot, inductive, constructor, recursor). The construction of these elements is as follows:
+followed by a sequence of primitives with integer tags (Name, Level, or Expr) and declartions (axiom, definition, theorem, opaque, quot, inductive, constructor, recursor), where related elements of an inductive or mutual inductive declaration (the inductive specifications, constructors, and recursors) are grouped together. The construction of these elements is as follows:
 
 Name.str
 ```
@@ -259,67 +259,72 @@ ConstantInfo.quotInfo
 }
 ```
 
-ConstantInfo.inductInfo
+Inductive Declaration:
+
 ```
 {
-    "inductInfo": {
-        "name": integer,
-        "levelParams": Array<integer>,
-        "type": integer,
-        "numParams": integer,
-        "numIndices": integer,
-        "all": Array<integer>,
-        "ctors": Array<integer>,
-        "numNested": integer,
-        "isRec": boolean,
-        "isUnsafe": boolean,
-        "isReflexive": boolean,
+    "inductive": {
+        "inductiveVals": Array<InductiveVal>,
+        "constructorVals": Array<ConstructorVal>,
+        "recursorVals": Array<RecursorVal>
     }
 }
 ```
 
-ConstantInfo.ctorInfo
+InductiveVal
 ```
 {
-    "ctorInfo": {
-        "name": integer,
-        "levelParams": Array<integer>,
-        "type": integer,
-        "induct": integer,
-        "cidx": integer,
-        "numParams": integer,
-        "numFields": integer,
-        "isUnsafe": boolean
-    }
+    "name": integer,
+    "levelParams": Array<integer>,
+    "type": integer,
+    "numParams": integer,
+    "numIndices": integer,
+    "all": Array<integer>,
+    "ctors": Array<integer>,
+    "numNested": integer,
+    "isRec": boolean,
+    "isUnsafe": boolean,
+    "isReflexive": boolean,
+}
+```
+
+ConstructorVal
+```
+{
+    "name": integer,
+    "levelParams": Array<integer>,
+    "type": integer,
+    "induct": integer,
+    "cidx": integer,
+    "numParams": integer,
+    "numFields": integer,
+    "isUnsafe": boolean
+}
+```
+
+RecursorVal
+```
+{
+    "name": integer,
+    "levelParams": Array<integer>,
+    "type": integer,
+    "all": Array<integer>,
+    "numParams": integer,
+    "numIndices": integer,
+    "numMotives": integer,
+    "numMinors": integer,
+    "rules": Array<RecursorRule>,
+    "k": boolean,
+    "isUnsafe": boolean
 }
 ```
 
 RecursorRule:
 ```
 {
-    "RecursorRule": {
-        "ctor": integer,
-        "nfields": integer,
-        "rhs": integer
-    }
+    "ctor": integer,
+    "nfields": integer,
+    "rhs": integer
 }
 ```
 
-ConstantInfo.recInfo
-```
-{
-    "recInfo": {
-        "name": integer,
-        "levelParams": Array<integer>,
-        "type": integer,
-        "all": Array<integer>,
-        "numParams": integer,
-        "numIndices": integer,
-        "numMotives": integer,
-        "numMinors": integer,
-        "rules": Array<RecursorRule>,
-        "k": boolean,
-        "isUnsafe": boolean
-    }
-}
-```

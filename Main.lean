@@ -30,11 +30,8 @@ def main (args : List String) : IO Unit := do
     | some cs => cs.map fun c => Syntax.decodeNameLit ("`" ++ c) |>.get!
     | none    => env.constants.toList.map Prod.fst |>.filter (!·.isInternal)
   M.run env do
-    modify (fun st => { st with
-      exportMData  := opts.any  (· == "--export-mdata")
-      exportUnsafe := opts.any (· == "--export-unsafe")
-    })
+    let _ ← initState env opts
     IO.println exportMetadata.compress
     for c in constants do
       modify (fun st => { st with noMDataExprs := {} })
-      let _ ← dumpConstant c
+      dumpConstant c
