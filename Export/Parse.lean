@@ -469,6 +469,8 @@ def parseRecInfo (obj : Std.TreeMap.Raw String Json) : M Unit := do
     let rhs ← getExpr rhsIdx
     return { ctor, nfields, rhs }
 
+  let recs := [] -- Work around for #10548
+
   addConst name <| .recInfo {
     name,
     levelParams,
@@ -481,6 +483,7 @@ def parseRecInfo (obj : Std.TreeMap.Raw String Json) : M Unit := do
     rules,
     k,
     isUnsafe,
+    recs
   }
 
 def parseItem (line : String) : M Unit := do
