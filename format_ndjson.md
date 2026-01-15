@@ -204,46 +204,55 @@ ConstantInfo.axiomInfo
 }
 ```
 
-ConstantInfo.defnInfo
+Definition
+
+includes both definitions and opaques which may appear in a mutual block, where definitions and opaques are distinguishable due to their disjoint attribute set.
 ```
 {
-    "defnInfo": {
-        "name": integer,
-        "levelParams": Array<integer>,
-        "type": integer,
-        "value": integer,
-        "hints": "opaque" | "abbrev" | {"regular": integer}
-        "safety": "unsafe" | "safe" | "partial"
-        "all": Array<integer>
-    }
+    "def": Array<DefnVal | OpaqueVal>
 }
 ```
 
+DefnVal
+```
+{
+    "name": integer,
+    "levelParams": Array<integer>,
+    "type": integer,
+    "value": integer,
+    "hints": "opaque" | "abbrev" | {"regular": integer}
+    "safety": "unsafe" | "safe" | "partial"
+    "all": Array<integer>
+}
+```
+
+OpaqueVal
+```
+{
+    "name": integer,
+    "levelParams": Array<integer>,
+    "type": integer,
+    "value": integer,
+    "isUnsafe": boolean,
+    "all": Array<integer>
+}
+```
 
 ConstantInfo.thmInfo
 ```
 {
-    "thmInfo": {
-        "name": integer,
-        "levelParams": Array<integer>,
-        "type": integer,
-        "value": integer,
-        "all": Array<integer>
-    }
+    "thm": Array<ThmVal>
 }
 ```
 
-ConstantInfo.opaqueInfo
+ThmVal
 ```
 {
-    "opaqueInfo": {
-        "name": integer,
-        "levelParams": Array<integer>,
-        "type": integer,
-        "value": integer,
-        "isUnsafe": boolean,
-        "all": Array<integer>
-    }
+    "name": integer,
+    "levelParams": Array<integer>,
+    "type": integer,
+    "value": integer,
+    "all": Array<integer>
 }
 ```
 

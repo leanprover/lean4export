@@ -211,6 +211,39 @@ def dumpExpr (e : Expr) : M Nat := do
     removeMData e
   dumpExprAux <| ← if (← get).exportMData then pure e else aux e
 
+def dumpDefnOpaque1 : ConstantInfo → M Json
+  | .defnInfo defnVal => do
+    pure <| Json.mkObj [
+      ("name", ← dumpName defnVal.name),
+      ("levelParams", ← dumpUparams defnVal.levelParams),
+      ("type", ← dumpExpr defnVal.type),
+      ("value", ← dumpExpr defnVal.value),
+      ("hints", defnVal.hints.toJson),
+      ("safety", defnVal.safety.toJson),
+      ("all", ← dumpNames defnVal.all)
+    ]
+  | .opaqueInfo val => do
+    pure <| Json.mkObj [
+      ("name", ← dumpName val.name),
+      ("levelParams", ← dumpUparams val.levelParams),
+      ("type", ← dumpExpr val.type),
+      ("value", ← dumpExpr val.value),
+      ("all", ← dumpNames val.all),
+      ("isUnsafe", val.isUnsafe)
+    ]
+  | _ => panic! "expected a `constantinfo.defnInfo` or `constantInfo.opaqueInfo`."
+
+def dumpThm1 : ConstantInfo → M Json
+  | .thmInfo val => do
+    pure <| Json.mkObj [
+      ("name", ← dumpName val.name),
+      ("levelParams", ← dumpUparams val.levelParams),
+      ("type", ← dumpExpr val.type),
+      ("value", ← dumpExpr val.value),
+      ("all", ← dumpNames val.all)
+    ]
+  | _ => panic! "expected a `constantinfo.thmInfo`."
+
 partial def dumpConstant (c : Name) : M Unit := do
   let declar := ((← read).env.find? c).get!
   if (declar.isUnsafe && !(← get).exportUnsafe) || (← get).visitedConstants.contains c then
@@ -227,45 +260,7 @@ partial def dumpConstant (c : Name) : M Unit := do
         ("isUnsafe", val.isUnsafe)
       ])
     ] |>.compress
-  | .defnInfo val => do
-    dumpDeps val.type
-    dumpDeps val.value
-    IO.println <| Json.mkObj [
-      ("defnInfo", Json.mkObj [
-        ("name", ← dumpName val.name),
-        ("levelParams", ← dumpUparams val.levelParams),
-        ("type", ← dumpExpr val.type),
-        ("value", ← dumpExpr val.value),
-        ("hints", val.hints.toJson),
-        ("safety", val.safety.toJson),
-        ("all", ← dumpNames val.all)
-      ])
-    ] |>.compress
-   | .thmInfo val => do
-    dumpDeps val.type
-    dumpDeps val.value
-    IO.println <| Json.mkObj [
-      ("thmInfo", .mkObj [
-        ("name", ← dumpName val.name),
-        ("levelParams", ← dumpUparams val.levelParams),
-        ("type", ← dumpExpr val.type),
-        ("value", ← dumpExpr val.value),
-        ("all", ← dumpNames val.all)
-      ])
-    ] |>.compress
-  | .opaqueInfo val => do
-    dumpDeps val.type
-    dumpDeps val.value
-    IO.println <| Json.mkObj [
-      ("opaqueInfo", .mkObj [
-        ("name", ← dumpName val.name),
-        ("levelParams", ← dumpUparams val.levelParams),
-        ("type", ← dumpExpr val.type),
-        ("value", ← dumpExpr val.value),
-        ("all", ← dumpNames val.all),
-        ("isUnsafe", val.isUnsafe)
-      ])
-    ] |>.compress
+  | .defnInfo _ | .opaqueInfo _ | .thmInfo _ => dumpThmDefOpaque declar
   | .quotInfo val =>
     dumpDeps val.type
     IO.println <| Json.mkObj [
@@ -280,13 +275,15 @@ partial def dumpConstant (c : Name) : M Unit := do
     let mut indVals := #[]
     let mut ctorVals := #[]
     let mut recursorNames := NameSet.empty
-
     for indName in baseIndVal.all do
       let val := ((← read).env.find? indName |>.get!).inductiveVal!
+      assert! ((!val.isUnsafe) || (← get).exportUnsafe)
       indVals := indVals.push val
       for ctor in val.ctors do
         match ((← read).env.find? ctor |>.get!) with
-        | .ctorInfo ctorVal => ctorVals := ctorVals.push ctorVal
+        | .ctorInfo ctorVal =>
+          assert! ((!ctorVal.isUnsafe) || (← get).exportUnsafe)
+          ctorVals := ctorVals.push ctorVal
         | _ => panic! "Expected a `ConstantInfo.ctorInfo`."
       modify fun st => { st with visitedConstants:= st.visitedConstants.insert indName }
       dumpDeps val.type
@@ -304,9 +301,10 @@ partial def dumpConstant (c : Name) : M Unit := do
     let mut recursorVals := #[]
     for recursorName in recursorNames do
       match ((← read).env.find? recursorName |>.get!) with
-      | .recInfo x => recursorVals := recursorVals.push x
+      | .recInfo recVal =>
+        assert! ((!recVal.isUnsafe) || (← get).exportUnsafe)
+        recursorVals := recursorVals.push recVal
       | _ => panic! "expected a `constantinfo.recinfo`."
-
     for recursorVal in recursorVals do
       modify fun st => { st with visitedConstants:= st.visitedConstants.insert recursorVal.name }
       dumpDeps recursorVal.type
@@ -378,3 +376,17 @@ where
       ("nfields", rule.nfields),
       ("rhs", ← dumpExpr rule.rhs),
     ]
+  /- Dump the (theorems) or (definitions and opaques) together if they're in a mutual block. Non-mutual
+  theorems and definitions/opaques are still dumped in a singleton array for simplicity. -/
+  dumpThmDefOpaque (base : ConstantInfo) : M Unit := do
+    let mut all := #[]
+    for declarName in base.all do
+      let declar := ((← read).env.find? declarName |>.get!)
+      assert!((!declar.isUnsafe) || (← get).exportUnsafe)
+      all := all.push declar
+      modify fun st => { st with visitedConstants:= st.visitedConstants.insert declarName }
+    for declar in all do
+      dumpDeps declar.type
+      dumpDeps (declar.value! (allowOpaque := true))
+    let (f, kind) := if base matches .thmInfo _ then (dumpThm1, "thm") else (dumpDefnOpaque1, "def")
+    IO.println <| Json.mkObj [(kind, (← all.mapM f).toJson)] |>.compress
