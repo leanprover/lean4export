@@ -1,4 +1,6 @@
-An exported `.ndjson` file will begin with an initial `meta` object which includes version info for the exporter and lean:
+# Lean 4 export format: version 3.0.0
+
+An exported `.ndjson` file will begin with an initial `meta` object which includes version info for the exporter, lean, and export format:
 
 Initial metadata object
 ```
@@ -11,6 +13,9 @@ Initial metadata object
         "lean": { 
             "githash": string,
             "version": string 
+        },
+        "format": {
+            "version": string
         } 
     }
 }

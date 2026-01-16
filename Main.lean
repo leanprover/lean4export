@@ -1,8 +1,6 @@
 import Export
 open Lean
 
-def semver := "3.0.0"
-
 def exportMetadata : Json :=
   let leanMeta := Json.mkObj [
     ("version", versionString),
@@ -10,13 +8,17 @@ def exportMetadata : Json :=
   ]
   let exporterMeta := Json.mkObj [
     ("name", "lean4export"),
-    ("version", semver)
+    ("version", "3.0.0")
+  ]
+  let formatMeta := Json.mkObj [
+    ("version", "3.0.0")
   ]
 
   Json.mkObj [
     ("meta", Json.mkObj [
       ("exporter", exporterMeta),
-      ("lean", leanMeta)
+      ("lean", leanMeta),
+      ("format", formatMeta)
     ])
   ]
 
