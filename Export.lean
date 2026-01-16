@@ -145,6 +145,8 @@ def removeMData (e : Expr) : M Expr := do
   modify (fun st => { st with noMDataExprs := st.noMDataExprs.insert e e' })
   pure e'
 
+mutual
+
 partial def dumpExprAux (e : Expr) : M Nat := do
   getIdx e "ie" (·.visitedExprs) ({ · with visitedExprs := · }) do
     match e with
@@ -157,8 +159,8 @@ partial def dumpExprAux (e : Expr) : M Nat := do
         ])
       ]
     | .bvar i => return .mkObj [("bvar", i)]
-    | .lit (.natVal i) => return .mkObj [("natVal", s!"{i}")]
-    | .lit (.strVal s) => return .mkObj [("strVal", s)]
+    | .lit (.natVal i) => dumpNatDeps; return .mkObj [("natVal", s!"{i}")]
+    | .lit (.strVal s) => dumpStrDeps; return .mkObj [("strVal", s)]
     | .sort l => return .mkObj [("sort", ← dumpLevel l)]
     | .const n us => return .mkObj [
       ("const", .mkObj [
@@ -204,45 +206,24 @@ partial def dumpExprAux (e : Expr) : M Nat := do
         ("struct", ← dumpExprAux e)
       ])
     ]
+where
+  dumpNatDeps : M Unit := do
+    let nat := ``Nat
+    if (!(← get).visitedConstants.contains nat) && ((← read).env.find? nat).isSome
+    then dumpConstant nat
+  dumpStrDeps : M Unit := do
+    let charOfNat := ``Char.ofNat
+    if (!(← get).visitedConstants.contains charOfNat) && ((← read).env.find? charOfNat).isSome
+    then dumpConstant charOfNat
+    let stringOfList := ``String.ofList
+    if (!(← get).visitedConstants.contains stringOfList) && ((← read).env.find? stringOfList).isSome
+    then dumpConstant stringOfList
 
-def dumpExpr (e : Expr) : M Nat := do
-  let aux (e : Expr) : M Expr := do
-    modify (fun st => { st with noMDataExprs := HashMap.emptyWithCapacity })
-    removeMData e
-  dumpExprAux <| ← if (← get).exportMData then pure e else aux e
-
-def dumpDefnOpaque1 : ConstantInfo → M Json
-  | .defnInfo defnVal => do
-    pure <| Json.mkObj [
-      ("name", ← dumpName defnVal.name),
-      ("levelParams", ← dumpUparams defnVal.levelParams),
-      ("type", ← dumpExpr defnVal.type),
-      ("value", ← dumpExpr defnVal.value),
-      ("hints", defnVal.hints.toJson),
-      ("safety", defnVal.safety.toJson),
-      ("all", ← dumpNames defnVal.all)
-    ]
-  | .opaqueInfo val => do
-    pure <| Json.mkObj [
-      ("name", ← dumpName val.name),
-      ("levelParams", ← dumpUparams val.levelParams),
-      ("type", ← dumpExpr val.type),
-      ("value", ← dumpExpr val.value),
-      ("all", ← dumpNames val.all),
-      ("isUnsafe", val.isUnsafe)
-    ]
-  | _ => panic! "expected a `constantinfo.defnInfo` or `constantInfo.opaqueInfo`."
-
-def dumpThm1 : ConstantInfo → M Json
-  | .thmInfo val => do
-    pure <| Json.mkObj [
-      ("name", ← dumpName val.name),
-      ("levelParams", ← dumpUparams val.levelParams),
-      ("type", ← dumpExpr val.type),
-      ("value", ← dumpExpr val.value),
-      ("all", ← dumpNames val.all)
-    ]
-  | _ => panic! "expected a `constantinfo.thmInfo`."
+partial def dumpExpr (e : Expr) : M Nat := do
+    let aux (e : Expr) : M Expr := do
+      modify (fun st => { st with noMDataExprs := HashMap.emptyWithCapacity })
+      removeMData e
+    dumpExprAux <| ← if (← get).exportMData then pure e else aux e
 
 partial def dumpConstant (c : Name) : M Unit := do
   let declar := ((← read).env.find? c).get!
@@ -381,7 +362,7 @@ where
   dumpThmDefOpaque (base : ConstantInfo) : M Unit := do
     let mut all := #[]
     for declarName in base.all do
-      let declar := ((← read).env.find? declarName |>.get!)
+      let declar := (← read).env.find? declarName |>.get!
       assert!((!declar.isUnsafe) || (← get).exportUnsafe)
       all := all.push declar
       modify fun st => { st with visitedConstants:= st.visitedConstants.insert declarName }
@@ -390,3 +371,37 @@ where
       dumpDeps (declar.value! (allowOpaque := true))
     let (f, kind) := if base matches .thmInfo _ then (dumpThm1, "thm") else (dumpDefnOpaque1, "def")
     IO.println <| Json.mkObj [(kind, (← all.mapM f).toJson)] |>.compress
+  dumpDefnOpaque1 : ConstantInfo → M Json
+    | .defnInfo defnVal => do
+      pure <| Json.mkObj [
+        ("name", ← dumpName defnVal.name),
+        ("levelParams", ← dumpUparams defnVal.levelParams),
+        ("type", ← dumpExpr defnVal.type),
+        ("value", ← dumpExpr defnVal.value),
+        ("hints", defnVal.hints.toJson),
+        ("safety", defnVal.safety.toJson),
+        ("all", ← dumpNames defnVal.all)
+      ]
+    | .opaqueInfo val => do
+      pure <| Json.mkObj [
+        ("name", ← dumpName val.name),
+        ("levelParams", ← dumpUparams val.levelParams),
+        ("type", ← dumpExpr val.type),
+        ("value", ← dumpExpr val.value),
+        ("all", ← dumpNames val.all),
+        ("isUnsafe", val.isUnsafe)
+      ]
+    | _ => panic! "expected a `constantinfo.defnInfo` or `constantInfo.opaqueInfo`."
+
+  dumpThm1 : ConstantInfo → M Json
+    | .thmInfo val => do
+      pure <| Json.mkObj [
+        ("name", ← dumpName val.name),
+        ("levelParams", ← dumpUparams val.levelParams),
+        ("type", ← dumpExpr val.type),
+        ("value", ← dumpExpr val.value),
+        ("all", ← dumpNames val.all)
+      ]
+    | _ => panic! "expected a `constantinfo.thmInfo`."
+
+end

@@ -1,7 +1,13 @@
 import Export
 open Lean
 
-def run (act : M α) : MetaM Unit := do let _ ← M.run (← getEnv) act
+def run (act : M α) : MetaM Unit := do
+  let env ← getEnv
+  let _ ← M.run env (do let _ ← initState env; act)
+
+def runEmpty (act : M α) : MetaM Unit := do
+  let env ← Lean.mkEmptyEnvironment
+  let _ ← M.run env (do let _ ← initState env; act)
 
 /--
 info: {"in":1,"str":{"pre":0,"str":"foo"}}
@@ -63,27 +69,78 @@ info: {"in":1,"str":{"pre":0,"str":"Prod"}}
 #guard_msgs in
 #eval run <| dumpExpr (.proj `Prod 1 (.bvar 0))
 
-/-- info: {"ie":0,"natVal":"1000000000000000"} -/
+/-- info: {"ie":0,"natVal":"100000000000000023456789"}
+-/
 #guard_msgs in
-#eval run <| dumpExpr (.lit (.natVal 1000000000000000))
+#eval runEmpty <| dumpExpr (.lit (.natVal 100000000000000023456789))
 
-
-/-- info: {"ie":0,"natVal":"123456789"} -/
+/-- info: {"in":1,"str":{"pre":0,"str":"Nat"}}
+{"il":1,"succ":0}
+{"ie":0,"sort":1}
+{"in":2,"str":{"pre":1,"str":"zero"}}
+{"in":3,"str":{"pre":1,"str":"succ"}}
+{"const":{"name":1,"us":[]},"ie":1}
+{"in":4,"str":{"pre":0,"str":"n"}}
+{"forallE":{"binderInfo":"default","body":1,"name":4,"type":1},"ie":2}
+{"in":5,"str":{"pre":1,"str":"rec"}}
+{"in":6,"str":{"pre":0,"str":"u"}}
+{"il":2,"param":6}
+{"in":7,"str":{"pre":0,"str":"motive"}}
+{"in":8,"str":{"pre":0,"str":"t"}}
+{"ie":3,"sort":2}
+{"forallE":{"binderInfo":"default","body":3,"name":8,"type":1},"ie":4}
+{"in":9,"str":{"pre":0,"str":"zero"}}
+{"bvar":0,"ie":5}
+{"const":{"name":2,"us":[]},"ie":6}
+{"app":{"arg":6,"fn":5},"ie":7}
+{"in":10,"str":{"pre":0,"str":"succ"}}
+{"in":11,"str":{"pre":0,"str":"n_ih"}}
+{"bvar":2,"ie":8}
+{"app":{"arg":5,"fn":8},"ie":9}
+{"bvar":3,"ie":10}
+{"const":{"name":3,"us":[]},"ie":11}
+{"bvar":1,"ie":12}
+{"app":{"arg":12,"fn":11},"ie":13}
+{"app":{"arg":13,"fn":10},"ie":14}
+{"forallE":{"binderInfo":"default","body":14,"name":11,"type":9},"ie":15}
+{"forallE":{"binderInfo":"default","body":15,"name":4,"type":1},"ie":16}
+{"app":{"arg":5,"fn":10},"ie":17}
+{"forallE":{"binderInfo":"default","body":17,"name":8,"type":1},"ie":18}
+{"forallE":{"binderInfo":"default","body":18,"name":10,"type":16},"ie":19}
+{"forallE":{"binderInfo":"default","body":19,"name":9,"type":7},"ie":20}
+{"forallE":{"binderInfo":"implicit","body":20,"name":7,"type":4},"ie":21}
+{"ie":22,"lam":{"binderInfo":"default","body":12,"name":10,"type":16}}
+{"ie":23,"lam":{"binderInfo":"default","body":22,"name":9,"type":7}}
+{"ie":24,"lam":{"binderInfo":"default","body":23,"name":7,"type":4}}
+{"app":{"arg":5,"fn":12},"ie":25}
+{"const":{"name":5,"us":[2]},"ie":26}
+{"app":{"arg":10,"fn":26},"ie":27}
+{"app":{"arg":8,"fn":27},"ie":28}
+{"app":{"arg":12,"fn":28},"ie":29}
+{"app":{"arg":5,"fn":29},"ie":30}
+{"app":{"arg":30,"fn":25},"ie":31}
+{"ie":32,"lam":{"binderInfo":"default","body":31,"name":4,"type":1}}
+{"ie":33,"lam":{"binderInfo":"default","body":32,"name":10,"type":16}}
+{"ie":34,"lam":{"binderInfo":"default","body":33,"name":9,"type":7}}
+{"ie":35,"lam":{"binderInfo":"default","body":34,"name":7,"type":4}}
+{"inductive":{"constructorVals":[{"cidx":0,"induct":1,"isUnsafe":false,"levelParams":[],"name":2,"numFields":0,"numParams":0,"type":1},{"cidx":1,"induct":1,"isUnsafe":false,"levelParams":[],"name":3,"numFields":1,"numParams":0,"type":2}],"inductiveVals":[{"all":[1],"ctors":[2,3],"isRec":true,"isReflexive":false,"isUnsafe":false,"levelParams":[],"name":1,"numIndices":0,"numNested":0,"numParams":0,"type":0}],"recursorVals":[{"all":[1],"isUnsafe":false,"k":false,"levelParams":[6],"name":5,"numIndices":0,"numMinors":2,"numMotives":1,"numParams":0,"rules":[{"ctor":2,"nfields":0,"rhs":24},{"ctor":3,"nfields":1,"rhs":35}],"type":21}]}}
+{"ie":36,"natVal":"100000000000000023456789"}
+-/
 #guard_msgs in
-#eval run <| dumpExpr (.lit (.natVal 123456789))
+#eval run <| dumpExpr (.lit (.natVal 100000000000000023456789))
 
 /-- info: {"ie":0,"strVal":"hi"} -/
 #guard_msgs in
-#eval run <| dumpExpr (.lit (.strVal "hi"))
+#eval runEmpty <| dumpExpr (.lit (.strVal "hi"))
 
 /-- info: {"ie":0,"strVal":"\r\rh\ni\u0009\u0009"} -/
 #guard_msgs in
-#eval run <| dumpExpr (.lit (.strVal "\r\rh
+#eval runEmpty <| dumpExpr (.lit (.strVal "\r\rh
 i\t\t"))
 
 /-- info: {"ie":0,"strVal":"اَلْعَرَبِيَّةُ اُرْدُو 普通话 日本語 廣東話 русский язык עִבְרִית‎ 한국어 aаoοpр"} -/
 #guard_msgs in
-#eval run <| dumpExpr
+#eval runEmpty <| dumpExpr
   (.lit (.strVal "اَلْعَرَبِيَّةُ اُرْدُو 普通话 日本語 廣東話 русский язык עִבְרִית‎ 한국어 aаoοpр"))
 
 /--
