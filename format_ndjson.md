@@ -1,0 +1,344 @@
+# Lean 4 export format: version 3.0.0
+
+An exported `.ndjson` file will begin with an initial `meta` object which includes version info for the exporter, lean, and export format:
+
+Initial metadata object
+```
+{ 
+    "meta": {
+        "exporter": { 
+            "name": string,
+            "version": string 
+            }, 
+        "lean": { 
+            "githash": string,
+            "version": string 
+        },
+        "format": {
+            "version": string
+        } 
+    }
+}
+```
+
+followed by a sequence of primitives with integer tags (Name, Level, or Expr) and declartions (axiom, definition, theorem, opaque, quot, inductive, constructor, recursor), where related elements of an inductive or mutual inductive declaration (the inductive specifications, constructors, and recursors) are grouped together. The construction of these elements is as follows:
+
+Name.str
+```
+{
+    "str": {
+        "pre": integer,
+        "str": string
+    },
+    "in": integer,
+}
+```
+
+Name.num
+```
+{
+    "num": {
+        "pre": integer,
+        "i": integer
+    }
+    "in": integer,
+}
+```
+
+Level.succ
+```
+{
+    "succ": integer
+    "il": integer,
+}
+```
+
+Level.max
+```
+{
+    "max": [integer, integer],
+    "il": integer,
+}
+```
+
+Level.imax
+```
+{
+    "imax": [integer, integer],
+    "il": integer,
+}
+
+```
+
+Level.param
+```
+{
+    "param": integer,
+    "il": integer,
+}
+```
+
+Expr.bvar
+```
+{
+  "bvar": integer,
+  "ie": integer,
+}
+```
+
+
+Expr.sort
+```
+{
+    "sort": integer,
+    "ie": integer,
+}
+```
+
+Expr.const
+```
+{
+    "const": {
+        "name": integer,
+        "us": Array<integer>
+    }
+    "ie": integer,
+}
+```
+
+Expr.app
+```
+{
+    "app": {
+        "fn": number,
+        "arg": number
+    }
+    "ie": integer,
+}
+```
+
+Expr.lam
+```
+{
+    "lam":  {
+        "name": integer,
+        "type": integer,
+        "body": integer,
+        "binderInfo": "default" | "implicit" | "strictImplicit" | "instImplicit"
+    }
+    "ie": integer,
+}
+```
+
+Expr.forallE
+```
+{
+    "forallE":  {
+        "name": integer,
+        "type": integer,
+        "body": integer,
+        "binderInfo": "default" | "implicit" | "strictImplicit" | "instImplicit"
+    }
+    "ie": integer,
+}
+
+```
+
+Expr.letE
+```
+{
+    "letE": {
+        "name": integer,
+        "type": integer,
+        "value": integer,
+        "body": integer,
+        "nondep": boolean
+    }
+    "ie": integer,
+}
+```
+
+Expr.proj
+```
+{
+    "proj": {
+        "typeName": integer,
+        "idx": integer,
+        "struct": integer
+    }
+    "ie": integer,
+}
+```
+ 
+Expr.lit (Literal.natVal) 
+```
+{
+    "natVal": string,
+    "ie": integer
+}
+```
+
+Expr.lit (Literal.strVal)
+```
+{
+    "strVal": string,
+    "ie": integer,
+}
+```
+
+Expr.mdata
+```
+{
+    "mdata": {
+        "expr": integer,
+        "data": object
+    },
+    "ie": integer
+}
+```
+
+ConstantInfo.axiomInfo
+```
+{
+    "axiomInfo": {
+        "name": integer,
+        "levelParams": Array<integer>,
+        "type": integer,
+        "isUnsafe": boolean
+    }
+}
+```
+
+Definition
+
+includes both definitions and opaques which may appear in a mutual block, where definitions and opaques are distinguishable due to their disjoint attribute set.
+```
+{
+    "def": Array<DefnVal | OpaqueVal>
+}
+```
+
+DefnVal
+```
+{
+    "name": integer,
+    "levelParams": Array<integer>,
+    "type": integer,
+    "value": integer,
+    "hints": "opaque" | "abbrev" | {"regular": integer}
+    "safety": "unsafe" | "safe" | "partial"
+    "all": Array<integer>
+}
+```
+
+OpaqueVal
+```
+{
+    "name": integer,
+    "levelParams": Array<integer>,
+    "type": integer,
+    "value": integer,
+    "isUnsafe": boolean,
+    "all": Array<integer>
+}
+```
+
+ConstantInfo.thmInfo
+```
+{
+    "thm": Array<ThmVal>
+}
+```
+
+ThmVal
+```
+{
+    "name": integer,
+    "levelParams": Array<integer>,
+    "type": integer,
+    "value": integer,
+    "all": Array<integer>
+}
+```
+
+ConstantInfo.quotInfo
+```
+{
+    "quotInfo": {
+        "name": integer,
+        "levelParams": Array<integer>,
+        "type": integer,
+        "kind": "type" | "ctor" | "lift" | "ind"
+    }
+}
+```
+
+Inductive Declaration:
+
+```
+{
+    "inductive": {
+        "inductiveVals": Array<InductiveVal>,
+        "constructorVals": Array<ConstructorVal>,
+        "recursorVals": Array<RecursorVal>
+    }
+}
+```
+
+InductiveVal
+```
+{
+    "name": integer,
+    "levelParams": Array<integer>,
+    "type": integer,
+    "numParams": integer,
+    "numIndices": integer,
+    "all": Array<integer>,
+    "ctors": Array<integer>,
+    "numNested": integer,
+    "isRec": boolean,
+    "isUnsafe": boolean,
+    "isReflexive": boolean,
+}
+```
+
+ConstructorVal
+```
+{
+    "name": integer,
+    "levelParams": Array<integer>,
+    "type": integer,
+    "induct": integer,
+    "cidx": integer,
+    "numParams": integer,
+    "numFields": integer,
+    "isUnsafe": boolean
+}
+```
+
+RecursorVal
+```
+{
+    "name": integer,
+    "levelParams": Array<integer>,
+    "type": integer,
+    "all": Array<integer>,
+    "numParams": integer,
+    "numIndices": integer,
+    "numMotives": integer,
+    "numMinors": integer,
+    "rules": Array<RecursorRule>,
+    "k": boolean,
+    "isUnsafe": boolean
+}
+```
+
+RecursorRule:
+```
+{
+    "ctor": integer,
+    "nfields": integer,
+    "rhs": integer
+}
+```
+

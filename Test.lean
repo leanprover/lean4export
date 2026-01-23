@@ -1,114 +1,245 @@
 import Export
 open Lean
 
-def run (act : M α) : MetaM Unit := do let _ ← M.run (← getEnv) act
+def run (act : M α) : MetaM Unit := do
+  let env ← getEnv
+  let _ ← M.run env (do let _ ← initState env; act)
+
+def runEmpty (act : M α) : MetaM Unit := do
+  let env ← Lean.mkEmptyEnvironment
+  let _ ← M.run env (do let _ ← initState env; act)
 
 /--
-info: 1 #NS 0 foo
-2 #NS 1 bla
-3 #NI 2 1
-4 #NS 3 boo
+info: {"in":1,"str":{"pre":0,"str":"foo"}}
+{"in":2,"str":{"pre":1,"str":"bla"}}
+{"in":3,"num":{"i":1,"pre":2}}
+{"in":4,"str":{"pre":3,"str":"boo"}}
 -/
 #guard_msgs in
 #eval run <| dumpName (`foo.bla |>.num 1 |>.str "boo")
 
 /--
-info: 1 #US 0
-2 #US 1
-1 #NS 0 l1
-3 #UP 1
-4 #UM 2 3
-2 #NS 0 l2
-5 #UP 2
-6 #UIM 4 5
+info: {"in":1,"str":{"pre":0,"str":"\npq\n  \nrs\u0009\r\nuv\n\n"}}
+-/
+#guard_msgs in
+#eval run <| dumpName (Name.str Name.anonymous "\npq\n  \nrs\t\r\nuv\n\n")
+
+/--
+info: {"il":1,"succ":0}
+{"il":2,"succ":1}
+{"in":1,"str":{"pre":0,"str":"l1"}}
+{"il":3,"param":1}
+{"il":4,"max":[2,3]}
+{"in":2,"str":{"pre":0,"str":"l2"}}
+{"il":5,"param":2}
+{"il":6,"imax":[4,5]}
 -/
 #guard_msgs in
 #eval run <| dumpLevel (.imax (.max (.succ (.succ .zero)) (.param `l1)) (.param `l2))
 
 /--
-info: 1 #NS 0 A
-1 #US 0
-0 #ES 1
-2 #NS 0 a
-1 #EV 0
-2 #EL #BD 2 1 1
-3 #EL #BI 1 0 2
+info: {"in":1,"str":{"pre":0,"str":"A"}}
+{"il":1,"succ":0}
+{"ie":0,"sort":1}
+{"in":2,"str":{"pre":0,"str":"a"}}
+{"bvar":0,"ie":1}
+{"ie":2,"lam":{"binderInfo":"default","body":1,"name":2,"type":1}}
+{"ie":3,"lam":{"binderInfo":"implicit","body":2,"name":1,"type":0}}
 -/
 #guard_msgs in
 #eval run <| dumpExpr (.lam `A (.sort (.succ .zero)) (.lam `a (.bvar 0) (.bvar 0) .default) .implicit)
 
 /--
-info: 1 #NS 0 x
-2 #NS 0 Nat
-0 #EC 2 ⏎
-3 #NS 2 zero
-1 #EC 3 ⏎
-2 #EV 0
-3 #EZ 1 0 1 2
+info: {"in":1,"str":{"pre":0,"str":"x"}}
+{"in":2,"str":{"pre":0,"str":"Nat"}}
+{"const":{"name":2,"us":[]},"ie":0}
+{"in":3,"str":{"pre":2,"str":"zero"}}
+{"const":{"name":3,"us":[]},"ie":1}
+{"bvar":0,"ie":2}
+{"ie":3,"letE":{"body":2,"name":1,"nondep":false,"type":0,"value":1}}
 -/
 #guard_msgs in
 #eval run <| dumpExpr (.letE `x (.const `Nat []) (.const `Nat.zero []) (.bvar 0) false)
 
 /--
-info: 1 #NS 0 Prod
-0 #EV 0
-1 #EJ 1 1 0
+info: {"in":1,"str":{"pre":0,"str":"Prod"}}
+{"bvar":0,"ie":0}
+{"ie":1,"proj":{"idx":1,"struct":0,"typeName":1}}
 -/
 #guard_msgs in
 #eval run <| dumpExpr (.proj `Prod 1 (.bvar 0))
 
-/-- info: 0 #ELN 1000000000000000 -/
-#guard_msgs in
-#eval run <| dumpExpr (.lit (.natVal 1000000000000000))
-
-/-- info: 0 #ELS 68 69 -/
-#guard_msgs in
-#eval run <| dumpExpr (.lit (.strVal "hi"))
-
-/--
-info: 1 #NS 0 id
-2 #NS 0 α
-3 #NS 0 u
-1 #UP 3
-0 #ES 1
-4 #NS 0 a
-1 #EV 0
-2 #EV 1
-3 #EP #BD 4 1 2
-4 #EP #BI 2 0 3
-5 #EL #BD 4 1 1
-6 #EL #BI 2 0 5
-#DEF 1 4 6 R 1 3
+/-- info: {"ie":0,"natVal":"100000000000000023456789"}
 -/
 #guard_msgs in
-#eval run <| dumpConstant `id
+#eval runEmpty <| dumpExpr (.lit (.natVal 100000000000000023456789))
 
-/--
-info: 1 #NS 0 List
-2 #NS 1 nil
-3 #NS 1 cons
-4 #NS 0 α
-5 #NS 0 u
-1 #UP 5
-2 #US 1
-0 #ES 2
-1 #EP #BD 4 0 0
-#IND 1 1 0 1 0 1 0 1 1 2 2 3 5
-2 #EC 1 1
-3 #EV 0
-4 #EA 2 3
-5 #EP #BI 4 0 4
-#CTOR 2 5 1 0 1 0 5
-6 #NS 0 head
-7 #NS 0 tail
-6 #EV 1
-7 #EA 2 6
-8 #EV 2
-9 #EA 2 8
-10 #EP #BD 7 7 9
-11 #EP #BD 6 3 10
-12 #EP #BI 4 0 11
-#CTOR 3 12 1 1 1 2 5
+/-- info: {"in":1,"str":{"pre":0,"str":"Nat"}}
+{"il":1,"succ":0}
+{"ie":0,"sort":1}
+{"in":2,"str":{"pre":1,"str":"zero"}}
+{"in":3,"str":{"pre":1,"str":"succ"}}
+{"const":{"name":1,"us":[]},"ie":1}
+{"in":4,"str":{"pre":0,"str":"n"}}
+{"forallE":{"binderInfo":"default","body":1,"name":4,"type":1},"ie":2}
+{"in":5,"str":{"pre":1,"str":"rec"}}
+{"in":6,"str":{"pre":0,"str":"u"}}
+{"il":2,"param":6}
+{"in":7,"str":{"pre":0,"str":"motive"}}
+{"in":8,"str":{"pre":0,"str":"t"}}
+{"ie":3,"sort":2}
+{"forallE":{"binderInfo":"default","body":3,"name":8,"type":1},"ie":4}
+{"in":9,"str":{"pre":0,"str":"zero"}}
+{"bvar":0,"ie":5}
+{"const":{"name":2,"us":[]},"ie":6}
+{"app":{"arg":6,"fn":5},"ie":7}
+{"in":10,"str":{"pre":0,"str":"succ"}}
+{"in":11,"str":{"pre":0,"str":"n_ih"}}
+{"bvar":2,"ie":8}
+{"app":{"arg":5,"fn":8},"ie":9}
+{"bvar":3,"ie":10}
+{"const":{"name":3,"us":[]},"ie":11}
+{"bvar":1,"ie":12}
+{"app":{"arg":12,"fn":11},"ie":13}
+{"app":{"arg":13,"fn":10},"ie":14}
+{"forallE":{"binderInfo":"default","body":14,"name":11,"type":9},"ie":15}
+{"forallE":{"binderInfo":"default","body":15,"name":4,"type":1},"ie":16}
+{"app":{"arg":5,"fn":10},"ie":17}
+{"forallE":{"binderInfo":"default","body":17,"name":8,"type":1},"ie":18}
+{"forallE":{"binderInfo":"default","body":18,"name":10,"type":16},"ie":19}
+{"forallE":{"binderInfo":"default","body":19,"name":9,"type":7},"ie":20}
+{"forallE":{"binderInfo":"implicit","body":20,"name":7,"type":4},"ie":21}
+{"ie":22,"lam":{"binderInfo":"default","body":12,"name":10,"type":16}}
+{"ie":23,"lam":{"binderInfo":"default","body":22,"name":9,"type":7}}
+{"ie":24,"lam":{"binderInfo":"default","body":23,"name":7,"type":4}}
+{"app":{"arg":5,"fn":12},"ie":25}
+{"const":{"name":5,"us":[2]},"ie":26}
+{"app":{"arg":10,"fn":26},"ie":27}
+{"app":{"arg":8,"fn":27},"ie":28}
+{"app":{"arg":12,"fn":28},"ie":29}
+{"app":{"arg":5,"fn":29},"ie":30}
+{"app":{"arg":30,"fn":25},"ie":31}
+{"ie":32,"lam":{"binderInfo":"default","body":31,"name":4,"type":1}}
+{"ie":33,"lam":{"binderInfo":"default","body":32,"name":10,"type":16}}
+{"ie":34,"lam":{"binderInfo":"default","body":33,"name":9,"type":7}}
+{"ie":35,"lam":{"binderInfo":"default","body":34,"name":7,"type":4}}
+{"inductive":{"constructorVals":[{"cidx":0,"induct":1,"isUnsafe":false,"levelParams":[],"name":2,"numFields":0,"numParams":0,"type":1},{"cidx":1,"induct":1,"isUnsafe":false,"levelParams":[],"name":3,"numFields":1,"numParams":0,"type":2}],"inductiveVals":[{"all":[1],"ctors":[2,3],"isRec":true,"isReflexive":false,"isUnsafe":false,"levelParams":[],"name":1,"numIndices":0,"numNested":0,"numParams":0,"type":0}],"recursorVals":[{"all":[1],"isUnsafe":false,"k":false,"levelParams":[6],"name":5,"numIndices":0,"numMinors":2,"numMotives":1,"numParams":0,"rules":[{"ctor":2,"nfields":0,"rhs":24},{"ctor":3,"nfields":1,"rhs":35}],"type":21}]}}
+{"ie":36,"natVal":"100000000000000023456789"}
 -/
 #guard_msgs in
-#eval run <| dumpConstant `List
+#eval run <| dumpExpr (.lit (.natVal 100000000000000023456789))
+
+/-- info: {"ie":0,"strVal":"hi"} -/
+#guard_msgs in
+#eval runEmpty <| dumpExpr (.lit (.strVal "hi"))
+
+/-- info: {"ie":0,"strVal":"\r\rh\ni\u0009\u0009"} -/
+#guard_msgs in
+#eval runEmpty <| dumpExpr (.lit (.strVal "\r\rh
+i\t\t"))
+
+/-- info: {"ie":0,"strVal":"اَلْعَرَبِيَّةُ اُرْدُو 普通话 日本語 廣東話 русский язык עִבְרִית‎ 한국어 aаoοpр"} -/
+#guard_msgs in
+#eval runEmpty <| dumpExpr
+  (.lit (.strVal "اَلْعَرَبِيَّةُ اُرْدُو 普通话 日本語 廣東話 русский язык עִבְרִית‎ 한국어 aаoοpр"))
+
+/--
+info: {"in":1,"str":{"pre":0,"str":"id"}}
+{"in":2,"str":{"pre":0,"str":"u"}}
+{"il":1,"param":2}
+{"in":3,"str":{"pre":0,"str":"α"}}
+{"ie":0,"sort":1}
+{"in":4,"str":{"pre":0,"str":"a"}}
+{"bvar":0,"ie":1}
+{"bvar":1,"ie":2}
+{"forallE":{"binderInfo":"default","body":2,"name":4,"type":1},"ie":3}
+{"forallE":{"binderInfo":"implicit","body":3,"name":3,"type":0},"ie":4}
+{"ie":5,"lam":{"binderInfo":"default","body":1,"name":4,"type":1}}
+{"ie":6,"lam":{"binderInfo":"implicit","body":5,"name":3,"type":0}}
+{"def":[{"all":[1],"hints":{"regular":1},"levelParams":[2],"name":1,"safety":"safe","type":4,"value":6}]}
+-/
+#guard_msgs in
+#eval run <| do
+  let _ ← initState (← read).env
+  dumpConstant `id
+
+/--
+info: {"in":1,"str":{"pre":0,"str":"List"}}
+{"in":2,"str":{"pre":0,"str":"u"}}
+{"il":1,"param":2}
+{"in":3,"str":{"pre":0,"str":"α"}}
+{"il":2,"succ":1}
+{"ie":0,"sort":2}
+{"forallE":{"binderInfo":"default","body":0,"name":3,"type":0},"ie":1}
+{"in":4,"str":{"pre":1,"str":"nil"}}
+{"in":5,"str":{"pre":1,"str":"cons"}}
+{"const":{"name":1,"us":[1]},"ie":2}
+{"bvar":0,"ie":3}
+{"app":{"arg":3,"fn":2},"ie":4}
+{"forallE":{"binderInfo":"implicit","body":4,"name":3,"type":0},"ie":5}
+{"in":6,"str":{"pre":0,"str":"head"}}
+{"in":7,"str":{"pre":0,"str":"tail"}}
+{"bvar":1,"ie":6}
+{"app":{"arg":6,"fn":2},"ie":7}
+{"bvar":2,"ie":8}
+{"app":{"arg":8,"fn":2},"ie":9}
+{"forallE":{"binderInfo":"default","body":9,"name":7,"type":7},"ie":10}
+{"forallE":{"binderInfo":"default","body":10,"name":6,"type":3},"ie":11}
+{"forallE":{"binderInfo":"implicit","body":11,"name":3,"type":0},"ie":12}
+{"in":8,"str":{"pre":1,"str":"rec"}}
+{"in":9,"str":{"pre":0,"str":"u_1"}}
+{"il":3,"param":9}
+{"in":10,"str":{"pre":0,"str":"motive"}}
+{"in":11,"str":{"pre":0,"str":"t"}}
+{"ie":13,"sort":3}
+{"forallE":{"binderInfo":"default","body":13,"name":11,"type":4},"ie":14}
+{"in":12,"str":{"pre":0,"str":"nil"}}
+{"const":{"name":4,"us":[1]},"ie":15}
+{"app":{"arg":6,"fn":15},"ie":16}
+{"app":{"arg":16,"fn":3},"ie":17}
+{"in":13,"str":{"pre":0,"str":"cons"}}
+{"bvar":3,"ie":18}
+{"app":{"arg":18,"fn":2},"ie":19}
+{"in":14,"str":{"pre":0,"str":"tail_ih"}}
+{"app":{"arg":3,"fn":18},"ie":20}
+{"bvar":4,"ie":21}
+{"const":{"name":5,"us":[1]},"ie":22}
+{"bvar":5,"ie":23}
+{"app":{"arg":23,"fn":22},"ie":24}
+{"app":{"arg":8,"fn":24},"ie":25}
+{"app":{"arg":6,"fn":25},"ie":26}
+{"app":{"arg":26,"fn":21},"ie":27}
+{"forallE":{"binderInfo":"default","body":27,"name":14,"type":20},"ie":28}
+{"forallE":{"binderInfo":"default","body":28,"name":7,"type":19},"ie":29}
+{"forallE":{"binderInfo":"default","body":29,"name":6,"type":8},"ie":30}
+{"forallE":{"binderInfo":"default","body":20,"name":11,"type":19},"ie":31}
+{"forallE":{"binderInfo":"default","body":31,"name":13,"type":30},"ie":32}
+{"forallE":{"binderInfo":"default","body":32,"name":12,"type":17},"ie":33}
+{"forallE":{"binderInfo":"implicit","body":33,"name":10,"type":14},"ie":34}
+{"forallE":{"binderInfo":"implicit","body":34,"name":3,"type":0},"ie":35}
+{"ie":36,"lam":{"binderInfo":"default","body":6,"name":13,"type":30}}
+{"ie":37,"lam":{"binderInfo":"default","body":36,"name":12,"type":17}}
+{"ie":38,"lam":{"binderInfo":"default","body":37,"name":10,"type":14}}
+{"ie":39,"lam":{"binderInfo":"default","body":38,"name":3,"type":0}}
+{"app":{"arg":21,"fn":2},"ie":40}
+{"app":{"arg":6,"fn":8},"ie":41}
+{"app":{"arg":3,"fn":41},"ie":42}
+{"const":{"name":8,"us":[3,1]},"ie":43}
+{"app":{"arg":23,"fn":43},"ie":44}
+{"app":{"arg":21,"fn":44},"ie":45}
+{"app":{"arg":18,"fn":45},"ie":46}
+{"app":{"arg":8,"fn":46},"ie":47}
+{"app":{"arg":3,"fn":47},"ie":48}
+{"app":{"arg":48,"fn":42},"ie":49}
+{"ie":50,"lam":{"binderInfo":"default","body":49,"name":7,"type":40}}
+{"ie":51,"lam":{"binderInfo":"default","body":50,"name":6,"type":18}}
+{"ie":52,"lam":{"binderInfo":"default","body":51,"name":13,"type":30}}
+{"ie":53,"lam":{"binderInfo":"default","body":52,"name":12,"type":17}}
+{"ie":54,"lam":{"binderInfo":"default","body":53,"name":10,"type":14}}
+{"ie":55,"lam":{"binderInfo":"default","body":54,"name":3,"type":0}}
+{"inductive":{"constructorVals":[{"cidx":0,"induct":1,"isUnsafe":false,"levelParams":[2],"name":4,"numFields":0,"numParams":1,"type":5},{"cidx":1,"induct":1,"isUnsafe":false,"levelParams":[2],"name":5,"numFields":2,"numParams":1,"type":12}],"inductiveVals":[{"all":[1],"ctors":[4,5],"isRec":true,"isReflexive":false,"isUnsafe":false,"levelParams":[2],"name":1,"numIndices":0,"numNested":0,"numParams":1,"type":1}],"recursorVals":[{"all":[1],"isUnsafe":false,"k":false,"levelParams":[9,2],"name":8,"numIndices":0,"numMinors":2,"numMotives":1,"numParams":1,"rules":[{"ctor":4,"nfields":0,"rhs":39},{"ctor":5,"nfields":2,"rhs":55}],"type":35}]}}
+-/
+#guard_msgs in
+#eval run <| do
+  let _ ← initState (← read).env
+  dumpConstant `List
