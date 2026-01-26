@@ -366,11 +366,13 @@ where
   theorems and definitions/opaques are still dumped in a singleton array for simplicity. -/
   dumpThmDefOpaque (base : ConstantInfo) : M Unit := do
     let mut all := #[]
-    for declarName in base.all do
-      let declar := (← read).env.find? declarName |>.get!
-      assert!((!declar.isUnsafe) || (← get).exportUnsafe)
-      all := all.push declar
-      modify fun st => { st with visitedConstants:= st.visitedConstants.insert declarName }
+    for declarName in (if base.all.contains base.name then base.all else base.name :: base.all) do
+      if declarName == base.name || !(← get).visitedConstants.contains declarName
+      then
+        let declar := (← read).env.find? declarName |>.get!
+        assert!((!declar.isUnsafe) || (← get).exportUnsafe)
+        all := all.push declar
+        modify fun st => { st with visitedConstants:= st.visitedConstants.insert declarName }
     for declar in all do
       dumpDeps declar.type
       dumpDeps (declar.value! (allowOpaque := true))
