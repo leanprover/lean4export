@@ -250,7 +250,7 @@ partial def dumpConstant (c : Name) : M Unit := do
     dumpDeps val.type
     dumpDeps val.value
     dumpObj [
-      ("defn", Json.mkObj [
+      ("def", Json.mkObj [
         ("name", ← dumpName val.name),
         ("levelParams", ← dumpUparams val.levelParams),
         ("type", ← dumpExpr val.type),

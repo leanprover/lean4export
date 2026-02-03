@@ -156,7 +156,7 @@ info: {"in":1,"str":{"pre":0,"str":"id"}}
 {"forallE":{"binderInfo":"implicit","body":3,"name":3,"type":0},"ie":4}
 {"ie":5,"lam":{"binderInfo":"default","body":1,"name":4,"type":1}}
 {"ie":6,"lam":{"binderInfo":"implicit","body":5,"name":3,"type":0}}
-{"def":[{"all":[1],"hints":{"regular":1},"levelParams":[2],"name":1,"safety":"safe","type":4,"value":6}]}
+{"def":{"all":[1],"hints":{"regular":1},"levelParams":[2],"name":1,"safety":"safe","type":4,"value":6}}
 -/
 #guard_msgs in
 #eval run <| do

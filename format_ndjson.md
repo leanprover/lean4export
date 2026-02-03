@@ -225,7 +225,7 @@ Expr.mdata
 ### Definition
 ```
 {
-    "defn": {
+    "def": {
         "name": integer,
         "levelParams": Array<integer>,
         "type": integer,
