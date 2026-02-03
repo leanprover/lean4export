@@ -1,6 +1,6 @@
 # Lean 4 export format: version 3.1.0
 
-An exported `.ndjson` file will begin with an initial `meta` object which includes version info for the exporter, lean, and export format:
+An exported `.ndjson` file will begin with an initial `meta` object which includes version info for the exporter, Lean, and export format:
 
 Initial metadata object
 ```
@@ -23,11 +23,7 @@ Initial metadata object
 
 followed by a sequence of primitives with integer tags (Name, Level, or Expr) and declarations (axiom, definition, theorem, opaque, quot, inductive, constructor, recursor), where related elements of an inductive or mutual inductive declaration (the inductive specifications, constructors, and recursors) are grouped together.
 
-<<<<<<< HEAD
-The export format contains information that is redundant and would likely be ignored or only validated by an fully external checker (such as the types of recursors). These are included for the benefit of other tools that want all constants with their types (e.g. dependency analysis tools).
-=======
 The export format contains information that is redundant and would likely be ignored or only validated by a full external checker (such as the types of recursors). These are included for the benefit of other tools that want all constants with their types (e.g. dependency analysis tools).
->>>>>>> @{-1}
 
 The construction of these elements is as described below (line breaks were added for readability; note that the NDJSON format requires these JSON objects to be rendered without any line breaks):
 
@@ -285,7 +281,7 @@ NB: The official Lean kernel uses the field-less constructor `Lean.Declaration.q
 
 ### Inductive Declaration:
 
-NB: The official lean Kernel expects a `Lean.Declaration.inductDecl`, which contains a (mutual) group of inductive declarations with their constructors. From that the kernel derives the recursors, and informational fields like `isRec`, `isReflexive` or `cidx`. The export format includes the data of these generated declarations for convenience. 
+NB: The official Lean kernel expects a `Lean.Declaration.inductDecl`, which contains a (mutual) group of inductive declarations with their constructors. From that the kernel derives the recursors, and informational fields like `isRec`, `isReflexive` or `cidx`. The export format includes the data of these generated declarations for convenience. 
 
 ```
 {
