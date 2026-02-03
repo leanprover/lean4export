@@ -325,3 +325,21 @@ Quot.lift
 #guard_msgs in
 #eval runParserTest do
   dumpConstant ``Function.const
+
+def functionWithLet  : true = true :=
+  let x := true
+  Eq.refl x
+
+/--
+info: Eq
+Eq.refl
+Eq.rec
+Bool
+Bool.false
+Bool.true
+Bool.rec
+functionWithLet
+-/
+#guard_msgs in
+#eval runParserTest do
+  dumpConstant ``functionWithLet
