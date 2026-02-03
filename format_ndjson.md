@@ -1,4 +1,6 @@
-An exported `.ndjson` file will begin with an initial `meta` object which includes version info for the exporter and lean:
+# Lean 4 export format: version 3.1.0
+
+An exported `.ndjson` file will begin with an initial `meta` object which includes version info for the exporter, lean, and export format:
 
 Initial metadata object
 ```
@@ -11,12 +13,21 @@ Initial metadata object
         "lean": { 
             "githash": string,
             "version": string 
+        },
+        "format": {
+            "version": string
         } 
     }
 }
 ```
 
-followed by a sequence of primitives with integer tags (Name, Level, or Expr) and declartions (axiom, definition, theorem, opaque, quot, inductive, constructor, recursor). The construction of these elements is as follows:
+followed by a sequence of primitives with integer tags (Name, Level, or Expr) and declartions (axiom, definition, theorem, opaque, quot, inductive, constructor, recursor), where related elements of an inductive or mutual inductive declaration (the inductive specifications, constructors, and recursors) are grouped together.
+
+The export format contains information that is redundant and would likely be ignored or only validated by an fulll external checker (such as the types of recursors). These are included for the benefit of other tools that want all constants with their types (e.g. dependency analysis tools).
+
+The construction of these elements is as described below (line breaks were added for readability; note that the NDJSON format requires these JSON objects to be rendered without any line breaks):
+
+## Names
 
 Name.str
 ```
@@ -25,7 +36,7 @@ Name.str
         "pre": integer,
         "str": string
     },
-    "i": integer,
+    "in": integer,
 }
 ```
 
@@ -36,15 +47,17 @@ Name.num
         "pre": integer,
         "i": integer
     }
-    "i": integer,
+    "in": integer,
 }
 ```
+
+## Levels
 
 Level.succ
 ```
 {
     "succ": integer
-    "i": integer,
+    "il": integer,
 }
 ```
 
@@ -52,7 +65,7 @@ Level.max
 ```
 {
     "max": [integer, integer],
-    "i": integer,
+    "il": integer,
 }
 ```
 
@@ -60,7 +73,7 @@ Level.imax
 ```
 {
     "imax": [integer, integer],
-    "i": integer,
+    "il": integer,
 }
 
 ```
@@ -69,17 +82,17 @@ Level.param
 ```
 {
     "param": integer,
-    "i": integer,
+    "il": integer,
 }
 ```
+
+## Expressions
 
 Expr.bvar
 ```
 {
-  "bvar": {
-    "deBrujinIndex": integer
-  }
-  "i": integer,
+  "bvar": integer,
+  "ie": integer,
 }
 ```
 
@@ -87,10 +100,8 @@ Expr.bvar
 Expr.sort
 ```
 {
-    "sort": {
-        "u": integer
-    }
-    "i": integer,
+    "sort": integer,
+    "ie": integer,
 }
 ```
 
@@ -98,10 +109,10 @@ Expr.const
 ```
 {
     "const": {
-        "declName": integer,
+        "name": integer,
         "us": Array<integer>
     }
-    "i": integer,
+    "ie": integer,
 }
 ```
 
@@ -112,7 +123,7 @@ Expr.app
         "fn": number,
         "arg": number
     }
-    "i": integer,
+    "ie": integer,
 }
 ```
 
@@ -120,12 +131,12 @@ Expr.lam
 ```
 {
     "lam":  {
-        "binderName": integer,
-        "binderType": integer,
+        "name": integer,
+        "type": integer,
         "body": integer,
         "binderInfo": "default" | "implicit" | "strictImplicit" | "instImplicit"
     }
-    "i": integer,
+    "ie": integer,
 }
 ```
 
@@ -133,12 +144,12 @@ Expr.forallE
 ```
 {
     "forallE":  {
-        "binderName": integer,
-        "binderType": integer,
+        "name": integer,
+        "type": integer,
         "body": integer,
         "binderInfo": "default" | "implicit" | "strictImplicit" | "instImplicit"
     }
-    "i": integer,
+    "ie": integer,
 }
 
 ```
@@ -147,13 +158,13 @@ Expr.letE
 ```
 {
     "letE": {
-        "declName": integer,
+        "name": integer,
         "type": integer,
         "value": integer,
         "body": integer,
         "nondep": boolean
     }
-    "i": integer,
+    "ie": integer,
 }
 ```
 
@@ -165,7 +176,7 @@ Expr.proj
         "idx": integer,
         "struct": integer
     }
-    "i": integer,
+    "ie": integer,
 }
 ```
  
@@ -173,19 +184,15 @@ Expr.lit (Literal.natVal)
 ```
 {
     "natVal": string,
-    "i": integer
+    "ie": integer
 }
 ```
 
 Expr.lit (Literal.strVal)
 ```
 {
-    "lit": {
-        "strVal": {
-            "val": string 
-        }
-    }
-    "i": integer,
+    "strVal": string,
+    "ie": integer,
 }
 ```
 
@@ -196,14 +203,17 @@ Expr.mdata
         "expr": integer,
         "data": object
     },
-    "i": integer
+    "ie": integer
 }
 ```
 
-ConstantInfo.axiomInfo
+## Declarations
+
+### Axiom
+
 ```
 {
-    "axiomInfo": {
+    "axiom": {
         "name": integer,
         "levelParams": Array<integer>,
         "type": integer,
@@ -212,39 +222,25 @@ ConstantInfo.axiomInfo
 }
 ```
 
-ConstantInfo.defnInfo
+### Definition
 ```
 {
-    "defnInfo": {
+    "def": {
         "name": integer,
         "levelParams": Array<integer>,
         "type": integer,
         "value": integer,
-        "hints": Array<"opaque" | "abbrev" | integer>
+        "hints": "opaque" | "abbrev" | {"regular": integer}
         "safety": "unsafe" | "safe" | "partial"
         "all": Array<integer>
     }
 }
 ```
 
-
-ConstantInfo.thmInfo
+### Opaques
 ```
 {
-    "thmInfo": {
-        "name": integer,
-        "levelParams": Array<integer>,
-        "type": integer,
-        "value": integer,
-        "all": Array<integer>
-    }
-}
-```
-
-ConstantInfo.opaqueInfo
-```
-{
-    "opaqueInfo": {
+    "opaque": {
         "name": integer,
         "levelParams": Array<integer>,
         "type": integer,
@@ -255,10 +251,26 @@ ConstantInfo.opaqueInfo
 }
 ```
 
-ConstantInfo.quotInfo
+### Theorems
 ```
 {
-    "quotInfo": {
+    "thm": {
+        "name": integer,
+        "levelParams": Array<integer>,
+        "type": integer,
+        "value": integer,
+        "all": Array<integer>
+    }
+}
+```
+
+### Quotients
+
+NB: The official Lean kernel uses the field-less constructor `Lean.Declaration.quotDecl : Lean.Declaration` as the input to declare the quotient declaratoins, and then adds the four declarations that make up the quotient package to the environment. The export format includes the data of these generated declarations for convenience. 
+
+```
+{
+    "quot": {
         "name": integer,
         "levelParams": Array<integer>,
         "type": integer,
@@ -267,67 +279,75 @@ ConstantInfo.quotInfo
 }
 ```
 
-ConstantInfo.inductInfo
+### Inductive Declaration:
+
+NB: The official lean Kernel expect a `Lean.Declaration.inductDecl`, which contains a (mutual) group of inductive declarations with their constructors. From that the kernel deries the recursors, and informational fields like `isRec`, `isReflexive` or `cidx`. The export format includes the data of these generated declarations for convenience. 
+
+
 ```
 {
-    "inductInfo": {
-        "name": integer,
-        "levelParams": Array<integer>,
-        "type": integer,
-        "numParams": integer,
-        "numIndices": integer,
-        "all": Array<integer>,
-        "ctors": Array<integer>,
-        "numNested": integer,
-        "isRec": boolean,
-        "isUnsafe": boolean,
-        "isReflexive": boolean,
+    "inductive": {
+        "inductiveVals": Array<InductiveVal>,
+        "constructorVals": Array<ConstructorVal>,
+        "recursorVals": Array<RecursorVal>
     }
 }
 ```
 
-ConstantInfo.ctorInfo
+InductiveVal
 ```
 {
-    "ctorInfo": {
-        "name": integer,
-        "levelParams": Array<integer>,
-        "type": integer,
-        "induct": integer,
-        "cidx": integer,
-        "numParams": integer,
-        "numFields": integer,
-        "isUnsafe": boolean
-    }
+    "name": integer,
+    "levelParams": Array<integer>,
+    "type": integer,
+    "numParams": integer,
+    "numIndices": integer,
+    "all": Array<integer>,
+    "ctors": Array<integer>,
+    "numNested": integer,
+    "isRec": boolean,
+    "isUnsafe": boolean,
+    "isReflexive": boolean,
+}
+```
+
+ConstructorVal
+```
+{
+    "name": integer,
+    "levelParams": Array<integer>,
+    "type": integer,
+    "induct": integer,
+    "cidx": integer,
+    "numParams": integer,
+    "numFields": integer,
+    "isUnsafe": boolean
+}
+```
+
+RecursorVal
+```
+{
+    "name": integer,
+    "levelParams": Array<integer>,
+    "type": integer,
+    "all": Array<integer>,
+    "numParams": integer,
+    "numIndices": integer,
+    "numMotives": integer,
+    "numMinors": integer,
+    "rules": Array<RecursorRule>,
+    "k": boolean,
+    "isUnsafe": boolean
 }
 ```
 
 RecursorRule:
 ```
 {
-    "RecursorRule": {
-        "ctor": integer,
-        "nfields": integer,
-        "rhs": integer
-    }
+    "ctor": integer,
+    "nfields": integer,
+    "rhs": integer
 }
 ```
 
-ConstantInfo.recInfo
-```
-{
-    "recInfo": {
-        "name": integer,
-        "levelParams": Array<integer>,
-        "type": integer,
-        "all": Array<integer>,
-        "numParams": integer,
-        "numIndices": integer,
-        "numMotives": integer,
-        "numMinors": integer,
-        "rules": Array<RecursorRule>,
-        "k": boolean,
-        "isUnsafe": boolean
-    }
-}
-```
