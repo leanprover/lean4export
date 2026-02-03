@@ -287,9 +287,9 @@ NB: The official lean Kernel expect a `Lean.Declaration.inductDecl`, which conta
 ```
 {
     "inductive": {
-        "inductiveVals": Array<InductiveVal>,
-        "constructorVals": Array<ConstructorVal>,
-        "recursorVals": Array<RecursorVal>
+        "types": Array<InductiveVal>,
+        "ctors": Array<ConstructorVal>,
+        "recs": Array<RecursorVal>
     }
 }
 ```

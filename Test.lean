@@ -74,7 +74,8 @@ info: {"in":1,"str":{"pre":0,"str":"Prod"}}
 #guard_msgs in
 #eval runEmpty <| dumpExpr (.lit (.natVal 100000000000000023456789))
 
-/-- info: {"in":1,"str":{"pre":0,"str":"Nat"}}
+/--
+info: {"in":1,"str":{"pre":0,"str":"Nat"}}
 {"il":1,"succ":0}
 {"ie":0,"sort":1}
 {"in":2,"str":{"pre":1,"str":"zero"}}
@@ -123,7 +124,7 @@ info: {"in":1,"str":{"pre":0,"str":"Prod"}}
 {"ie":33,"lam":{"binderInfo":"default","body":32,"name":10,"type":16}}
 {"ie":34,"lam":{"binderInfo":"default","body":33,"name":9,"type":7}}
 {"ie":35,"lam":{"binderInfo":"default","body":34,"name":7,"type":4}}
-{"inductive":{"constructorVals":[{"cidx":0,"induct":1,"isUnsafe":false,"levelParams":[],"name":2,"numFields":0,"numParams":0,"type":1},{"cidx":1,"induct":1,"isUnsafe":false,"levelParams":[],"name":3,"numFields":1,"numParams":0,"type":2}],"inductiveVals":[{"all":[1],"ctors":[2,3],"isRec":true,"isReflexive":false,"isUnsafe":false,"levelParams":[],"name":1,"numIndices":0,"numNested":0,"numParams":0,"type":0}],"recursorVals":[{"all":[1],"isUnsafe":false,"k":false,"levelParams":[6],"name":5,"numIndices":0,"numMinors":2,"numMotives":1,"numParams":0,"rules":[{"ctor":2,"nfields":0,"rhs":24},{"ctor":3,"nfields":1,"rhs":35}],"type":21}]}}
+{"inductive":{"ctors":[{"cidx":0,"induct":1,"isUnsafe":false,"levelParams":[],"name":2,"numFields":0,"numParams":0,"type":1},{"cidx":1,"induct":1,"isUnsafe":false,"levelParams":[],"name":3,"numFields":1,"numParams":0,"type":2}],"recs":[{"all":[1],"isUnsafe":false,"k":false,"levelParams":[6],"name":5,"numIndices":0,"numMinors":2,"numMotives":1,"numParams":0,"rules":[{"ctor":2,"nfields":0,"rhs":24},{"ctor":3,"nfields":1,"rhs":35}],"type":21}],"types":[{"all":[1],"ctors":[2,3],"isRec":true,"isReflexive":false,"isUnsafe":false,"levelParams":[],"name":1,"numIndices":0,"numNested":0,"numParams":0,"type":0}]}}
 {"ie":36,"natVal":"100000000000000023456789"}
 -/
 #guard_msgs in
@@ -237,7 +238,7 @@ info: {"in":1,"str":{"pre":0,"str":"List"}}
 {"ie":53,"lam":{"binderInfo":"default","body":52,"name":12,"type":17}}
 {"ie":54,"lam":{"binderInfo":"default","body":53,"name":10,"type":14}}
 {"ie":55,"lam":{"binderInfo":"default","body":54,"name":3,"type":0}}
-{"inductive":{"constructorVals":[{"cidx":0,"induct":1,"isUnsafe":false,"levelParams":[2],"name":4,"numFields":0,"numParams":1,"type":5},{"cidx":1,"induct":1,"isUnsafe":false,"levelParams":[2],"name":5,"numFields":2,"numParams":1,"type":12}],"inductiveVals":[{"all":[1],"ctors":[4,5],"isRec":true,"isReflexive":false,"isUnsafe":false,"levelParams":[2],"name":1,"numIndices":0,"numNested":0,"numParams":1,"type":1}],"recursorVals":[{"all":[1],"isUnsafe":false,"k":false,"levelParams":[9,2],"name":8,"numIndices":0,"numMinors":2,"numMotives":1,"numParams":1,"rules":[{"ctor":4,"nfields":0,"rhs":39},{"ctor":5,"nfields":2,"rhs":55}],"type":35}]}}
+{"inductive":{"ctors":[{"cidx":0,"induct":1,"isUnsafe":false,"levelParams":[2],"name":4,"numFields":0,"numParams":1,"type":5},{"cidx":1,"induct":1,"isUnsafe":false,"levelParams":[2],"name":5,"numFields":2,"numParams":1,"type":12}],"recs":[{"all":[1],"isUnsafe":false,"k":false,"levelParams":[9,2],"name":8,"numIndices":0,"numMinors":2,"numMotives":1,"numParams":1,"rules":[{"ctor":4,"nfields":0,"rhs":39},{"ctor":5,"nfields":2,"rhs":55}],"type":35}],"types":[{"all":[1],"ctors":[4,5],"isRec":true,"isReflexive":false,"isUnsafe":false,"levelParams":[2],"name":1,"numIndices":0,"numNested":0,"numParams":1,"type":1}]}}
 -/
 #guard_msgs in
 #eval run <| do
