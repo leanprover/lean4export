@@ -238,25 +238,63 @@ partial def dumpConstant (c : Name) : M Unit := do
   match declar with
   | .axiomInfo val => do
     dumpDeps val.type
-    IO.println <| Json.mkObj [
-      ("axiomInfo", Json.mkObj [
+    dumpObj [
+      ("axiom", Json.mkObj [
         ("name", ← dumpName val.name),
         ("levelParams", ← dumpUparams val.levelParams),
         ("type", ← dumpExpr val.type),
         ("isUnsafe", val.isUnsafe)
       ])
-    ] |>.compress
-  | .defnInfo _ | .opaqueInfo _ | .thmInfo _ => dumpThmDefOpaque declar
+    ]
+  | .defnInfo val => do
+    dumpDeps val.type
+    dumpDeps val.value
+    dumpObj [
+      ("defn", Json.mkObj [
+        ("name", ← dumpName val.name),
+        ("levelParams", ← dumpUparams val.levelParams),
+        ("type", ← dumpExpr val.type),
+        ("value", ← dumpExpr val.value),
+        ("hints", val.hints.toJson),
+        ("safety", val.safety.toJson),
+        ("all", ← dumpNames val.all)
+      ])
+    ]
+  | .opaqueInfo val => do
+    dumpDeps val.type
+    dumpDeps val.value
+    dumpObj [
+      ("opaque", Json.mkObj [
+        ("name", ← dumpName val.name),
+        ("levelParams", ← dumpUparams val.levelParams),
+        ("type", ← dumpExpr val.type),
+        ("value", ← dumpExpr val.value),
+        ("all", ← dumpNames val.all),
+        ("isUnsafe", val.isUnsafe)
+      ])
+    ]
+  | .thmInfo val => do
+    dumpDeps val.type
+    dumpDeps val.value
+    dumpObj [
+      ("thm", Json.mkObj [
+        ("name", ← dumpName val.name),
+        ("levelParams", ← dumpUparams val.levelParams),
+        ("type", ← dumpExpr val.type),
+        ("value", ← dumpExpr val.value),
+        ("all", ← dumpNames val.all)
+      ])
+    ]
   | .quotInfo val =>
     dumpDeps val.type
-    IO.println <| Json.mkObj [
-      ("quotInfo", .mkObj [
+    dumpObj [
+      ("quot", .mkObj [
         ("name", ← dumpName val.name),
         ("levelParams", ← dumpUparams val.levelParams),
         ("type", ← dumpExpr val.type),
         ("kind", val.kind.toJson)
       ])
-    ] |>.compress
+    ]
   | .inductInfo baseIndVal => do
     let mut indVals := #[]
     let mut ctorVals := #[]
@@ -340,13 +378,13 @@ partial def dumpConstant (c : Name) : M Unit := do
           ("k", recursorVal.k),
           ("isUnsafe", recursorVal.isUnsafe),
       ]
-    IO.println <| Json.mkObj [
+    dumpObj [
       ("inductive", Json.mkObj [
         ("inductiveVals", inductiveValsJson.toJson),
         ("constructorVals", ctorValsJson.toJson),
         ("recursorVals", recursorValsJson.toJson),
       ])
-    ] |>.compress
+    ]
   | .ctorInfo val => dumpConstant val.induct
   | .recInfo val =>
     for indName in val.all do
@@ -362,51 +400,8 @@ where
       ("nfields", rule.nfields),
       ("rhs", ← dumpExpr rule.rhs),
     ]
-  /- Dump the (theorems) or (definitions and opaques) together if they're in a mutual block. Non-mutual
-  theorems and definitions/opaques are still dumped in a singleton array for simplicity. -/
-  dumpThmDefOpaque (base : ConstantInfo) : M Unit := do
-    let mut all := #[]
-    for declarName in base.all do
-      let declar := (← read).env.find? declarName |>.get!
-      assert!((!declar.isUnsafe) || (← get).exportUnsafe)
-      all := all.push declar
-      modify fun st => { st with visitedConstants:= st.visitedConstants.insert declarName }
-    for declar in all do
-      dumpDeps declar.type
-      dumpDeps (declar.value! (allowOpaque := true))
-    let (f, kind) := if base matches .thmInfo _ then (dumpThm1, "thm") else (dumpDefnOpaque1, "def")
-    IO.println <| Json.mkObj [(kind, (← all.mapM f).toJson)] |>.compress
-  dumpDefnOpaque1 : ConstantInfo → M Json
-    | .defnInfo defnVal => do
-      pure <| Json.mkObj [
-        ("name", ← dumpName defnVal.name),
-        ("levelParams", ← dumpUparams defnVal.levelParams),
-        ("type", ← dumpExpr defnVal.type),
-        ("value", ← dumpExpr defnVal.value),
-        ("hints", defnVal.hints.toJson),
-        ("safety", defnVal.safety.toJson),
-        ("all", ← dumpNames defnVal.all)
-      ]
-    | .opaqueInfo val => do
-      pure <| Json.mkObj [
-        ("name", ← dumpName val.name),
-        ("levelParams", ← dumpUparams val.levelParams),
-        ("type", ← dumpExpr val.type),
-        ("value", ← dumpExpr val.value),
-        ("all", ← dumpNames val.all),
-        ("isUnsafe", val.isUnsafe)
-      ]
-    | _ => panic! "expected a `constantinfo.defnInfo` or `constantInfo.opaqueInfo`."
+  dumpObj (fields : List (String × Json)) : M Unit :=
+    IO.println <| Json.mkObj fields |>.compress
 
-  dumpThm1 : ConstantInfo → M Json
-    | .thmInfo val => do
-      pure <| Json.mkObj [
-        ("name", ← dumpName val.name),
-        ("levelParams", ← dumpUparams val.levelParams),
-        ("type", ← dumpExpr val.type),
-        ("value", ← dumpExpr val.value),
-        ("all", ← dumpNames val.all)
-      ]
-    | _ => panic! "expected a `constantinfo.thmInfo`."
 
 end

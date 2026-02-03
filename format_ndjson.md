@@ -1,4 +1,4 @@
-# Lean 4 export format: version 3.0.0
+# Lean 4 export format: version 3.1.0
 
 An exported `.ndjson` file will begin with an initial `meta` object which includes version info for the exporter, lean, and export format:
 
@@ -21,7 +21,13 @@ Initial metadata object
 }
 ```
 
-followed by a sequence of primitives with integer tags (Name, Level, or Expr) and declartions (axiom, definition, theorem, opaque, quot, inductive, constructor, recursor), where related elements of an inductive or mutual inductive declaration (the inductive specifications, constructors, and recursors) are grouped together. The construction of these elements is as follows:
+followed by a sequence of primitives with integer tags (Name, Level, or Expr) and declartions (axiom, definition, theorem, opaque, quot, inductive, constructor, recursor), where related elements of an inductive or mutual inductive declaration (the inductive specifications, constructors, and recursors) are grouped together.
+
+The export format contains information that is redundant and would likely be ignored or only validated by an fulll external checker (such as the types of recursors). These are included for the benefit of other tools that want all constants with their types (e.g. dependency analysis tools).
+
+The construction of these elements is as described below (line breaks were added for readability; note that the NDJSON format requires these JSON objects to be rendered without any line breaks):
+
+## Names
 
 Name.str
 ```
@@ -44,6 +50,8 @@ Name.num
     "in": integer,
 }
 ```
+
+## Levels
 
 Level.succ
 ```
@@ -77,6 +85,8 @@ Level.param
     "il": integer,
 }
 ```
+
+## Expressions
 
 Expr.bvar
 ```
@@ -197,10 +207,13 @@ Expr.mdata
 }
 ```
 
-ConstantInfo.axiomInfo
+## Declarations
+
+### Axiom
+
 ```
 {
-    "axiomInfo": {
+    "axiom": {
         "name": integer,
         "levelParams": Array<integer>,
         "type": integer,
@@ -209,62 +222,55 @@ ConstantInfo.axiomInfo
 }
 ```
 
-Definition
-
-includes both definitions and opaques which may appear in a mutual block, where definitions and opaques are distinguishable due to their disjoint attribute set.
+### Definition
 ```
 {
-    "def": Array<DefnVal | OpaqueVal>
+    "defn": {
+        "name": integer,
+        "levelParams": Array<integer>,
+        "type": integer,
+        "value": integer,
+        "hints": "opaque" | "abbrev" | {"regular": integer}
+        "safety": "unsafe" | "safe" | "partial"
+        "all": Array<integer>
+    }
 }
 ```
 
-DefnVal
+### Opaques
 ```
 {
-    "name": integer,
-    "levelParams": Array<integer>,
-    "type": integer,
-    "value": integer,
-    "hints": "opaque" | "abbrev" | {"regular": integer}
-    "safety": "unsafe" | "safe" | "partial"
-    "all": Array<integer>
+    "opaque": {
+        "name": integer,
+        "levelParams": Array<integer>,
+        "type": integer,
+        "value": integer,
+        "isUnsafe": boolean,
+        "all": Array<integer>
+    }
 }
 ```
 
-OpaqueVal
+### Theorems
 ```
 {
-    "name": integer,
-    "levelParams": Array<integer>,
-    "type": integer,
-    "value": integer,
-    "isUnsafe": boolean,
-    "all": Array<integer>
+    "thm": {
+        "name": integer,
+        "levelParams": Array<integer>,
+        "type": integer,
+        "value": integer,
+        "all": Array<integer>
+    }
 }
 ```
 
-ConstantInfo.thmInfo
-```
-{
-    "thm": Array<ThmVal>
-}
-```
+### Quotients
 
-ThmVal
-```
-{
-    "name": integer,
-    "levelParams": Array<integer>,
-    "type": integer,
-    "value": integer,
-    "all": Array<integer>
-}
-```
+NB: The official Lean kernel uses the field-less constructor `Lean.Declaration.quotDecl : Lean.Declaration` as the input to declare the quotient declaratoins, and then adds the four declarations that make up the quotient package to the environment. The export format includes the data of these generated declarations for convenience. 
 
-ConstantInfo.quotInfo
 ```
 {
-    "quotInfo": {
+    "quot": {
         "name": integer,
         "levelParams": Array<integer>,
         "type": integer,
@@ -273,7 +279,10 @@ ConstantInfo.quotInfo
 }
 ```
 
-Inductive Declaration:
+### Inductive Declaration:
+
+NB: The official lean Kernel expect a `Lean.Declaration.inductDecl`, which contains a (mutual) group of inductive declarations with their constructors. From that the kernel deries the recursors, and informational fields like `isRec`, `isReflexive` or `cidx`. The export format includes the data of these generated declarations for convenience. 
+
 
 ```
 {
