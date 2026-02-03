@@ -87,103 +87,64 @@ def parseJsonObj (line : String) : M (Std.TreeMap.Raw String Json) := do
   let .ok (.obj obj) := Json.Parser.anyCore.run line | fail "Expected JSON object"
   return obj
 
-@[inline]
-def fetchIndex (key : String) (obj : Std.TreeMap.Raw String Json) : M Nat := do
-  let some (.num (idx : Nat)) := obj[key]? | fail s!"Object is missing the index key `{key}`: {obj.keys}"
-  return idx
+def parseNameStr (json : Json) : M Name := do
+  let .obj data := json | fail s!"Name.str invalid"
+  let some (.num (preIdx : Nat)) := data["pre"]? | fail s!"Name.str invalid"
+  let some (.str str) := data["str"]? | fail s!"Name.str invalid"
+  return .str (← getName preIdx) str
 
-def parseNameStr (obj : Std.TreeMap.Raw String Json) : M Unit := do
-  let idx ← fetchIndex "in" obj
-  let some (.obj data) := obj["str"]? | fail s!"Name.str {idx} invalid"
-  let some (.num (preIdx : Nat)) := data["pre"]? | fail s!"Name.str {idx} invalid"
-  let some (.str str) := data["str"]? | fail s!"Name.str {idx} invalid"
+def parseNameNum (json : Json) : M Name := do
+  let .obj data := json | fail s!"Name.num invalid"
+  let some (.num (preIdx : Nat)) := data["pre"]? | fail s!"Name.str invalid"
+  let some (.num (i : Nat)) := data["i"]? | fail s!"Name.num invalid"
+  return .num (← getName preIdx) i
 
-  let pre ← getName preIdx
+def parseLevelSucc (json : Json) : M Level := do
+  let .num (lIdx : Nat) := json | fail s!"Level.succ invalid"
+  return .succ (← getLevel lIdx)
 
-  addName idx (.str pre str)
+def parseLevelMax (json : Json) : M Level := do
+  let .arr #[.num (lhsIdx : Nat), .num (rhsIdx : Nat)] := json
+    | fail s!"Level.max invalid"
+  return .max (← getLevel lhsIdx) (← getLevel rhsIdx)
 
-def parseNameNum (obj : Std.TreeMap.Raw String Json) : M Unit := do
-  let idx ← fetchIndex "in" obj
-  let some (.obj data) := obj["num"]? | fail s!"Name.num {idx} invalid"
-  let some (.num (preIdx : Nat)) := data["pre"]? | fail s!"Name.str {idx} invalid"
-  let some (.num (i : Nat)) := data["i"]? | fail s!"Name.num {idx} invalid"
+def parseLevelImax (json : Json) : M Level := do
+  let .arr #[.num (lhsIdx : Nat), .num (rhsIdx : Nat)] := json
+    | fail s!"Level.imax invalid"
+  return .imax (← getLevel lhsIdx) (← getLevel rhsIdx)
 
-  let pre ← getName preIdx
+def parseLevelParam (json : Json) : M Level := do
+  let .num (nIdx : Nat) := json | fail s!"Level.param invalid"
+  return .param (← getName nIdx)
 
-  addName idx (.num pre i)
+def parseExprBVar (json : Json) : M Expr := do
+  let .num (deBruijnIndex : Nat) := json | fail s!"Expr.bvar invalid"
+  return .bvar deBruijnIndex
 
-def parseLevelSucc (obj : Std.TreeMap.Raw String Json) : M Unit := do
-  let idx ← fetchIndex "il" obj
-  let some (.num (lIdx : Nat)) := obj["succ"]? | fail s!"Level.succ {idx} invalid"
-  let l ← getLevel lIdx
+def parseExprSort (json : Json) : M Expr := do
+  let .num (uIdx : Nat) := json | fail s!"Expr.sort invalid"
+  return .sort (← getLevel uIdx)
 
-  addLevel idx (.succ l)
-
-def parseLevelMax (obj : Std.TreeMap.Raw String Json) : M Unit := do
-  let idx ← fetchIndex "il" obj
-  let some (.arr #[.num (lhsIdx : Nat), .num (rhsIdx : Nat)]) := obj["max"]?
-    | fail s!"Level.max {idx} invalid"
-
-  let lhs ← getLevel lhsIdx
-  let rhs ← getLevel rhsIdx
-
-  addLevel idx (.max lhs rhs)
-
-def parseLevelImax (obj : Std.TreeMap.Raw String Json) : M Unit := do
-  let idx ← fetchIndex "il" obj
-  let some (.arr #[.num (lhsIdx : Nat), .num (rhsIdx : Nat)]) := obj["imax"]?
-    | fail s!"Level.imax {idx} invalid"
-
-  let lhs ← getLevel lhsIdx
-  let rhs ← getLevel rhsIdx
-
-  addLevel idx (.imax lhs rhs)
-
-def parseLevelParam (obj : Std.TreeMap.Raw String Json) : M Unit := do
-  let idx ← fetchIndex "il" obj
-  let some (.num (nIdx : Nat)) := obj["param"]? | fail s!"Level.param {idx} invalid"
-
-  let n ← getName nIdx
-
-  addLevel idx (.param n)
-
-def parseExprBVar (obj : Std.TreeMap.Raw String Json) : M Unit := do
-  let idx ← fetchIndex "ie" obj
-  let some (.num (deBruijnIndex : Nat)) := obj["bvar"]? | fail s!"Expr.bvar {idx} invalid"
-
-  addExpr idx (.bvar deBruijnIndex)
-
-def parseExprSort (obj : Std.TreeMap.Raw String Json) : M Unit := do
-  let idx ← fetchIndex "ie" obj
-  let some (.num (uIdx : Nat)) := obj["sort"]? | fail s!"Expr.sort {idx} invalid"
-
-  let u ← getLevel uIdx
-
-  addExpr idx (.sort u)
-
-def parseExprConst (obj : Std.TreeMap.Raw String Json) : M Unit := do
-  let idx ← fetchIndex "ie" obj
-  let some (.obj data) := obj["const"]? | fail s!"Expr.const {idx} invalid"
-  let some (.num (declNameIdx : Nat)) := data["name"]? | fail s!"Expr.const {idx} invalid"
-  let some (.arr usIdxs) := data["us"]? | fail s!"Expr.const {idx} invalid"
+def parseExprConst (json : Json) : M Expr := do
+  let .obj data := json | fail s!"Expr.const invalid"
+  let some (.num (declNameIdx : Nat)) := data["name"]? | fail s!"Expr.const invalid"
+  let some (.arr usIdxs) := data["us"]? | fail s!"Expr.const invalid"
 
   let declName ← getName declNameIdx
   let us ← usIdxs.mapM fun uIdx => do
-    let (.num (uIdx : Nat)) := uIdx | fail s!"Expr.const {idx} invalid"
+    let (.num (uIdx : Nat)) := uIdx | fail s!"Expr.const invalid"
     getLevel uIdx
 
-  addExpr idx (.const declName us.toList)
+  return .const declName us.toList
 
-def parseExprApp (obj : Std.TreeMap.Raw String Json) : M Unit := do
-  let idx ← fetchIndex "ie" obj
-  let some (.obj data) := obj["app"]? | fail s!"Expr.app {idx} invalid"
-  let some (.num (fnIdx : Nat)) := data["fn"]? | fail s!"Expr.app {idx} invalid"
-  let some (.num (argIdx : Nat)) := data["arg"]? | fail s!"Expr.app {idx} invalid"
-
+def parseExprApp (json : Json) : M Expr := do
+  let .obj data := json | fail s!"Expr.app invalid"
+  let some (.num (fnIdx : Nat)) := data["fn"]? | fail s!"Expr.app invalid"
+  let some (.num (argIdx : Nat)) := data["arg"]? | fail s!"Expr.app invalid"
   let fn ← getExpr fnIdx
   let arg ← getExpr argIdx
 
-  addExpr idx (.app fn arg)
+  return .app fn arg
 
 def parseBinderInfo (info : String) : M BinderInfo :=
   match info with
@@ -193,94 +154,86 @@ def parseBinderInfo (info : String) : M BinderInfo :=
   | "instImplicit" => return .instImplicit
   | _ => fail s!"Invalid binder info: {info}"
 
-def parseExprLam (obj : Std.TreeMap.Raw String Json) : M Unit := do
-  let idx ← fetchIndex "ie" obj
-  let some (.obj data) := obj["lam"]? | fail s!"Expr.lam {idx} invalid"
-  let some (.num (binderNameIdx : Nat)) := data["name"]? | fail s!"Expr.lam {idx} invalid"
-  let some (.num (binderTypeIdx : Nat)) := data["type"]? | fail s!"Expr.lam {idx} invalid"
-  let some (.num (bodyIdx : Nat)) := data["body"]? | fail s!"Expr.lam {idx} invalid"
-  let some (.str binderInfoStr) := data["binderInfo"]? | fail s!"Expr.lam {idx} invalid"
+def parseExprLam (json : Json) : M Expr := do
+  let .obj data := json | fail s!"Expr.lam invalid"
+  let some (.num (binderNameIdx : Nat)) := data["name"]? | fail s!"Expr.lam invalid"
+  let some (.num (binderTypeIdx : Nat)) := data["type"]? | fail s!"Expr.lam invalid"
+  let some (.num (bodyIdx : Nat)) := data["body"]? | fail s!"Expr.lam invalid"
+  let some (.str binderInfoStr) := data["binderInfo"]? | fail s!"Expr.lam invalid"
 
   let binderName ← getName binderNameIdx
   let binderType ← getExpr binderTypeIdx
   let body ← getExpr bodyIdx
   let binderInfo ← parseBinderInfo binderInfoStr
 
-  addExpr idx (.lam binderName binderType body binderInfo)
+  return .lam binderName binderType body binderInfo
 
-def parseExprForallE (obj : Std.TreeMap.Raw String Json) : M Unit := do
-  let idx ← fetchIndex "ie" obj
-  let some (.obj data) := obj["forallE"]? | fail s!"Expr.forallE {idx} invalid"
-  let some (.num (binderNameIdx : Nat)) := data["name"]? | fail s!"Expr.forallE {idx} invalid"
-  let some (.num (binderTypeIdx : Nat)) := data["type"]? | fail s!"Expr.forallE {idx} invalid"
-  let some (.num (bodyIdx : Nat)) := data["body"]? | fail s!"Expr.forallE {idx} invalid"
-  let some (.str binderInfoStr) := data["binderInfo"]? | fail s!"Expr.forallE {idx} invalid"
+def parseExprForallE (json : Json) : M Expr := do
+  let .obj data := json | fail s!"Expr.forallE invalid"
+  let some (.num (binderNameIdx : Nat)) := data["name"]? | fail s!"Expr.forallE invalid"
+  let some (.num (binderTypeIdx : Nat)) := data["type"]? | fail s!"Expr.forallE invalid"
+  let some (.num (bodyIdx : Nat)) := data["body"]? | fail s!"Expr.forallE invalid"
+  let some (.str binderInfoStr) := data["binderInfo"]? | fail s!"Expr.forallE invalid"
 
   let binderName ← getName binderNameIdx
   let binderType ← getExpr binderTypeIdx
   let body ← getExpr bodyIdx
   let binderInfo ← parseBinderInfo binderInfoStr
 
-  addExpr idx (.forallE binderName binderType body binderInfo)
+  return .forallE binderName binderType body binderInfo
 
-def parseExprLetE (obj : Std.TreeMap.Raw String Json) : M Unit := do
-  let idx ← fetchIndex "ie" obj
-  let some (.obj data) := obj["letE"]? | fail s!"Expr.letE {idx} invalid"
-  let some (.num (binderNameIdx : Nat)) := data["name"]? | fail s!"Expr.letE {idx} invalid"
-  let some (.num (binderTypeIdx : Nat)) := data["type"]? | fail s!"Expr.letE {idx} invalid"
-  let some (.num (valueIdx : Nat)) := data["value"]? | fail s!"Expr.letE {idx} invalid"
-  let some (.num (bodyIdx : Nat)) := data["body"]? | fail s!"Expr.letE {idx} invalid"
-  let some (.bool nondep) := data["nondep"]? | fail s!"Expr.letE {idx} invalid"
+def parseExprLetE (json : Json) : M Expr := do
+  let .obj data := json | fail s!"Expr.letE invalid"
+  let some (.num (binderNameIdx : Nat)) := data["name"]? | fail s!"Expr.letE invalid"
+  let some (.num (binderTypeIdx : Nat)) := data["type"]? | fail s!"Expr.letE invalid"
+  let some (.num (valueIdx : Nat)) := data["value"]? | fail s!"Expr.letE invalid"
+  let some (.num (bodyIdx : Nat)) := data["body"]? | fail s!"Expr.letE invalid"
+  let some (.bool nondep) := data["nondep"]? | fail s!"Expr.letE invalid"
 
   let binderName ← getName binderNameIdx
   let binderType ← getExpr binderTypeIdx
   let value ← getExpr valueIdx
   let body ← getExpr bodyIdx
 
-  addExpr idx (.letE binderName binderType value body nondep)
+  return .letE binderName binderType value body nondep
 
-def parseExprProj (obj : Std.TreeMap.Raw String Json) : M Unit := do
-  let idx ← fetchIndex "ie" obj
-  let some (.obj data) := obj["proj"]? | fail s!"Expr.proj {idx} invalid"
-  let some (.num (typeNameIdx : Nat)) := data["typeName"]? | fail s!"Expr.proj {idx} invalid"
-  let some (.num (projIdx : Nat)) := data["idx"]? | fail s!"Expr.proj {idx} invalid"
-  let some (.num (structIdx : Nat)) := data["struct"]? | fail s!"Expr.proj {idx} invalid"
+def parseExprProj (json : Json) : M Expr := do
+  let .obj data := json | fail s!"Expr.proj invalid"
+  let some (.num (typeNameIdx : Nat)) := data["typeName"]? | fail s!"Expr.proj invalid"
+  let some (.num (projIdx : Nat)) := data["idx"]? | fail s!"Expr.proj invalid"
+  let some (.num (structIdx : Nat)) := data["struct"]? | fail s!"Expr.proj invalid"
 
   let typeName ← getName typeNameIdx
   let struct ← getExpr structIdx
 
-  addExpr idx (.proj typeName projIdx struct)
+  return .proj typeName projIdx struct
 
-def parseExprNatLit (obj : Std.TreeMap.Raw String Json) : M Unit := do
-  let idx ← fetchIndex "ie" obj
-  let some (.str natValStr) := obj["natVal"]? | fail s!"Expr.lit natVal {idx} invalid"
-  let some natVal := String.toNat? natValStr | fail s!"Expr.lit natVal {idx} invalid"
+def parseExprNatLit (json : Json) : M Expr := do
+  let .str natValStr := json | fail s!"Expr.lit natVal invalid"
+  let some natVal := String.toNat? natValStr | fail s!"Expr.lit natVal invalid"
 
-  addExpr idx (.lit (.natVal natVal))
+  return .lit (.natVal natVal)
 
-def parseExprStrLit (obj : Std.TreeMap.Raw String Json) : M Unit := do
-  let idx ← fetchIndex "ie" obj
-  let some (.str strVal) := obj["strVal"]? | fail s!"Expr.lit strVal {idx} invalid"
+def parseExprStrLit (json : Json) : M Expr := do
+  let .obj data := json | fail s!"Expr.lit strVal invalid"
+  let some (.str strVal) := data["strVal"]? | fail s!"Expr.lit strVal invalid"
+  return .lit (.strVal strVal)
 
-  addExpr idx (.lit (.strVal strVal))
-
-def parseExprMdata (obj : Std.TreeMap.Raw String Json) : M Unit := do
-  let idx ← fetchIndex "ie" obj
-  let some (.obj data) := obj["mdata"]? | fail s!"Expr.mdata {idx} invalid"
-  let some (.num (exprIdx : Nat)) := data["expr"]? | fail s!"Expr.mdata {idx} invalid"
-  let some (.obj _dataObj) := data["data"]? | fail s!"Expr.mdata {idx} invalid"
+def parseExprMdata (json : Json) : M Expr := do
+  let .obj data := json | fail s!"Expr.mdata invalid"
+  let some (.num (exprIdx : Nat)) := data["expr"]? | fail s!"Expr.mdata invalid"
+  let some (.obj _dataObj) := data["data"]? | fail s!"Expr.mdata invalid"
   let expr ← getExpr exprIdx
 
   -- TODO: Unclear how to perfectly recover with the current output format
-  addExpr idx (.mdata {} expr)
+  return .mdata {} expr
 
 def getNameList (idxs : Array Json) : M (List Name) := do
   idxs.toList.mapM fun idx => do
     let (.num (idx : Nat)) := idx | fail s!"failed to convert to name idx"
     getName idx
 
-def parseAxiomInfo (obj : Std.TreeMap.Raw String Json) : M Unit := do
-  let some (.obj data) := obj["axiom"]? | fail s!"axiomInfo invalid"
+def parseAxiomInfo (data : Std.TreeMap.Raw String Json) : M Unit := do
   let some (.num (nameIdx : Nat)) := data["name"]? | fail s!"axiomInfo invalid"
   let some (.arr levelParamsIdxs) := data["levelParams"]? | fail s!"axiomInfo invalid"
   let some (.num (typeIdx : Nat)) := data["type"]? | fail s!"axiomInfo invalid"
@@ -292,8 +245,7 @@ def parseAxiomInfo (obj : Std.TreeMap.Raw String Json) : M Unit := do
 
   addConst name <| .axiomInfo { name, levelParams, type, isUnsafe }
 
-def parseDefnInfo (obj : Std.TreeMap.Raw String Json) : M Unit := do
-  let some (.obj data) := obj["def"]? | fail s!"defnInfo invalid"
+def parseDefnInfo (data : Std.TreeMap.Raw String Json) : M Unit := do
   let some (.num (nameIdx : Nat)) := data["name"]? | fail s!"defnInfo invalid"
   let some (.arr levelParamsIdxs) := data["levelParams"]? | fail s!"defnInfo invalid"
   let some (.num (typeIdx : Nat)) := data["type"]? | fail s!"defnInfo invalid"
@@ -324,8 +276,7 @@ def parseDefnInfo (obj : Std.TreeMap.Raw String Json) : M Unit := do
 
   addConst name <| .defnInfo { name, levelParams, type, value, hints, safety, all }
 
-def parseThmInfo (obj : Std.TreeMap.Raw String Json) : M Unit := do
-  let some (.obj data) := obj["thm"]? | fail s!"thmInfo invalid"
+def parseThmInfo (data : Std.TreeMap.Raw String Json) : M Unit := do
   let some (.num (nameIdx : Nat)) := data["name"]? | fail s!"thmInfo invalid"
   let some (.arr levelParamsIdxs) := data["levelParams"]? | fail s!"thmInfo invalid"
   let some (.num (typeIdx : Nat)) := data["type"]? | fail s!"thmInfo invalid"
@@ -340,8 +291,7 @@ def parseThmInfo (obj : Std.TreeMap.Raw String Json) : M Unit := do
 
   addConst name <| .thmInfo { name, levelParams, type, value, all }
 
-def parseOpaqueInfo (obj : Std.TreeMap.Raw String Json) : M Unit := do
-  let some (.obj data) := obj["opaque"]? | fail s!"opaqueInfo invalid"
+def parseOpaqueInfo (data : Std.TreeMap.Raw String Json) : M Unit := do
   let some (.num (nameIdx : Nat)) := data["name"]? | fail s!"opaqueInfo invalid"
   let some (.arr levelParamsIdxs) := data["levelParams"]? | fail s!"opaqueInfo invalid"
   let some (.num (typeIdx : Nat)) := data["type"]? | fail s!"opaqueInfo invalid"
@@ -358,8 +308,7 @@ def parseOpaqueInfo (obj : Std.TreeMap.Raw String Json) : M Unit := do
 
   addConst name <| .opaqueInfo { name, levelParams, type, value, all, isUnsafe }
 
-def parseQuotInfo (obj : Std.TreeMap.Raw String Json) : M Unit := do
-  let some (.obj data) := obj["quot"]? | fail s!"quotInfo invalid"
+def parseQuotInfo (data : Std.TreeMap.Raw String Json) : M Unit := do
   let some (.num (nameIdx : Nat)) := data["name"]? | fail s!"quotInfo invalid"
   let some (.arr levelParamsIdxs) := data["levelParams"]? | fail s!"quotInfo invalid"
   let some (.num (typeIdx : Nat)) := data["type"]? | fail s!"quotInfo invalid"
@@ -481,8 +430,7 @@ def parseRecInfo (json : Json) : M Unit := do
     isUnsafe,
   }
 
-def parseInductive (obj : Std.TreeMap.Raw String Json) : M Unit := do
-  let some (.obj data) := obj["inductive"]? | fail s!"Inductive invalid"
+def parseInductive (data : Std.TreeMap.Raw String Json) : M Unit := do
   let some (.arr types) := data["types"]? | fail s!"Inductive invalid, no `types`"
   let some (.arr ctors) := data["ctors"]? | fail s!"Inductive invalid, no `ctors`"
   let some (.arr recs) := data["recs"]? | fail s!"Inductive invalid, no `recs`"
@@ -492,55 +440,39 @@ def parseInductive (obj : Std.TreeMap.Raw String Json) : M Unit := do
 
 def parseItem (line : String) : M Unit := do
   let obj ← parseJsonObj line
-  if obj.contains "str" then
-    parseNameStr obj
-  else if obj.contains "num" then
-    parseNameNum obj
-  else if obj.contains "succ" then
-    parseLevelSucc obj
-  else if obj.contains "max" then
-    parseLevelMax obj
-  else if obj.contains "imax" then
-    parseLevelImax obj
-  else if obj.contains "param" then
-    parseLevelParam obj
-  else if obj.contains "bvar" then
-    parseExprBVar obj
-  else if obj.contains "sort" then
-    parseExprSort obj
-  else if obj.contains "const" then
-    parseExprConst obj
-  else if obj.contains "app" then
-    parseExprApp obj
-  else if obj.contains "lam" then
-    parseExprLam obj
-  else if obj.contains "forallE" then
-    parseExprForallE obj
-  else if obj.contains "letE" then
-    parseExprLetE obj
-  else if obj.contains "proj" then
-    parseExprProj obj
-  else if obj.contains "natVal" then
-    parseExprNatLit obj
-  else if obj.contains "strVal" then
-    parseExprStrLit obj
-  else if obj.contains "mdata" then
-    parseExprMdata obj
-  else if obj.contains "axiom" then
-    parseAxiomInfo obj
-  else if obj.contains "def" then
-    parseDefnInfo obj
-  else if obj.contains "thm" then
-    parseThmInfo obj
-  else if obj.contains "opaque" then
-    parseOpaqueInfo obj
-  else if obj.contains "quot" then
-    parseQuotInfo obj
-  else if obj.contains "inductive" then
-    parseInductive obj
-  else
-    fail s!"Unknown export object: {obj.keys}"
-
+  let kv := obj.toList
+  -- Normalize key order...
+  let kv := match kv with
+    | [x, y@("in", _)] => [y,x]
+    | [x, y@("ie", _)] => [y,x]
+    | [x, y@("il", _)] => [y,x]
+    | _ =>kv
+  -- so that we can match on it easily
+  match kv with
+  | [("in", .num (idx : Nat)),("str", data)] =>   addName idx <| ← parseNameStr data
+  | [("in", .num (idx : Nat)),("num", data)] =>   addName idx <| ← parseNameNum data
+  | [("il", .num (idx : Nat)),("succ", data)] =>  addLevel idx <| ← parseLevelSucc data
+  | [("il", .num (idx : Nat)),("max", data)] =>   addLevel idx <| ← parseLevelMax data
+  | [("il", .num (idx : Nat)),("imax", data)] =>  addLevel idx <| ← parseLevelImax data
+  | [("il", .num (idx : Nat)),("param", data)] => addLevel idx <| ← parseLevelParam data
+  | [("ie", .num (idx : Nat)),("bvar", data)] =>  addExpr idx <| ← parseExprBVar data
+  | [("ie", .num (idx : Nat)),("sort", data)] =>  addExpr idx <| ← parseExprSort data
+  | [("ie", .num (idx : Nat)),("const", data)] => addExpr idx <| ← parseExprConst data
+  | [("ie", .num (idx : Nat)),("app", data)] =>   addExpr idx <| ← parseExprApp data
+  | [("ie", .num (idx : Nat)),("lam", data)] =>   addExpr idx <| ← parseExprLam data
+  | [("ie", .num (idx : Nat)),("forallE", data)] =>addExpr idx <| ← parseExprForallE data
+  | [("ie", .num (idx : Nat)),("letE", data)] =>   addExpr idx <| ← parseExprLetE data
+  | [("ie", .num (idx : Nat)),("proj", data)] =>   addExpr idx <| ← parseExprProj data
+  | [("ie", .num (idx : Nat)),("natVal", data)] => addExpr idx <| ← parseExprNatLit data
+  | [("ie", .num (idx : Nat)),("strVal", data)] => addExpr idx <| ← parseExprStrLit data
+  | [("ie", .num (idx : Nat)),("mdata", data)] => addExpr idx <| ← parseExprMdata data
+  | [("axiom", .obj data)] => parseAxiomInfo data
+  | [("def", .obj data)] => parseDefnInfo data
+  | [("thm", .obj data)] => parseThmInfo data
+  | [("opaque", .obj data)] => parseOpaqueInfo data
+  | [("quot", .obj data)] => parseQuotInfo data
+  | [("inductive", .obj data)] => parseInductive data
+  | _ => fail s!"Unknown export object with keys {obj.keys}"
 
 partial def parseItems : M Unit :=
   go
