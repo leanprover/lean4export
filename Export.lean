@@ -1,6 +1,5 @@
 import Lean
 import Std.Data.HashMap.Basic
-import Export.Parse
 
 open Lean
 open Std (HashMap)
@@ -232,7 +231,8 @@ partial def dumpExpr (e : Expr) : M Nat := do
     dumpExprAux <| ← if (← get).exportMData then pure e else aux e
 
 partial def dumpConstant (c : Name) : M Unit := do
-  let declar := ((← read).env.find? c).get!
+  let some declar := (← read).env.find? c
+    | panic! s!"Constant {c} not found in environment."
   if (declar.isUnsafe && !(← get).exportUnsafe) || (← get).visitedConstants.contains c then
     return
   modify fun st => { st with visitedConstants := st.visitedConstants.insert c }
@@ -381,9 +381,9 @@ partial def dumpConstant (c : Name) : M Unit := do
       ]
     dumpObj [
       ("inductive", Json.mkObj [
-        ("inductiveVals", inductiveValsJson.toJson),
-        ("constructorVals", ctorValsJson.toJson),
-        ("recursorVals", recursorValsJson.toJson),
+        ("types", inductiveValsJson.toJson),
+        ("ctors", ctorValsJson.toJson),
+        ("recs", recursorValsJson.toJson),
       ])
     ]
   | .ctorInfo val => dumpConstant val.induct
@@ -404,5 +404,28 @@ where
   dumpObj (fields : List (String × Json)) : M Unit :=
     IO.println <| Json.mkObj fields |>.compress
 
-
 end
+
+def exportMetadata : Json :=
+  let leanMeta := Json.mkObj [
+    ("version", versionString),
+    ("githash", githash)
+  ]
+  let exporterMeta := Json.mkObj [
+    ("name", "lean4export"),
+    ("version", "3.0.0")
+  ]
+  let formatMeta := Json.mkObj [
+    ("version", "3.0.0")
+  ]
+
+  Json.mkObj [
+    ("meta", Json.mkObj [
+      ("exporter", exporterMeta),
+      ("lean", leanMeta),
+      ("format", formatMeta)
+    ])
+  ]
+
+def dumpMetadata : M Unit := do
+  IO.println exportMetadata.compress
