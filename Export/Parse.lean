@@ -215,8 +215,7 @@ def parseExprNatLit (json : Json) : M Expr := do
   return .lit (.natVal natVal)
 
 def parseExprStrLit (json : Json) : M Expr := do
-  let .obj data := json | fail s!"Expr.lit strVal invalid"
-  let some (.str strVal) := data["strVal"]? | fail s!"Expr.lit strVal invalid"
+  let .str strVal := json | fail s!"Expr.lit strVal invalid"
   return .lit (.strVal strVal)
 
 def parseExprMdata (json : Json) : M Expr := do
