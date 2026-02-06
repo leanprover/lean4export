@@ -343,3 +343,10 @@ functionWithLet
 #guard_msgs in
 #eval runParserTest do
   dumpConstant ``functionWithLet
+
+def literals : Nat × String := (42, "42")
+
+/-- error: Expr.lit strVal invalid -/
+#guard_msgs in
+#eval runParserTest do
+  dumpConstant ``literals
