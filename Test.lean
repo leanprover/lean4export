@@ -1,13 +1,14 @@
 import Export
+import Export.Parse
 open Lean
 
 def run (act : M α) : MetaM Unit := do
   let env ← getEnv
-  let _ ← M.run env (do let _ ← initState env; act)
+  let _ ← M.run env (do initState env; act)
 
 def runEmpty (act : M α) : MetaM Unit := do
   let env ← Lean.mkEmptyEnvironment
-  let _ ← M.run env (do let _ ← initState env; act)
+  let _ ← M.run env (do initState env; act)
 
 /--
 info: {"in":1,"str":{"pre":0,"str":"foo"}}
@@ -161,7 +162,7 @@ info: {"in":1,"str":{"pre":0,"str":"id"}}
 -/
 #guard_msgs in
 #eval run <| do
-  let _ ← initState (← read).env
+  initState (← read).env
   dumpConstant `id
 
 /--
@@ -241,6 +242,104 @@ info: {"in":1,"str":{"pre":0,"str":"List"}}
 {"inductive":{"ctors":[{"cidx":0,"induct":1,"isUnsafe":false,"levelParams":[2],"name":4,"numFields":0,"numParams":1,"type":5},{"cidx":1,"induct":1,"isUnsafe":false,"levelParams":[2],"name":5,"numFields":2,"numParams":1,"type":12}],"recs":[{"all":[1],"isUnsafe":false,"k":false,"levelParams":[9,2],"name":8,"numIndices":0,"numMinors":2,"numMotives":1,"numParams":1,"rules":[{"ctor":4,"nfields":0,"rhs":39},{"ctor":5,"nfields":2,"rhs":55}],"type":35}],"types":[{"all":[1],"ctors":[4,5],"isRec":true,"isReflexive":false,"isUnsafe":false,"levelParams":[2],"name":1,"numIndices":0,"numNested":0,"numParams":1,"type":1}]}}
 -/
 #guard_msgs in
-#eval run <| do
-  let _ ← initState (← read).env
+#eval run do
+  initState (← read).env
   dumpConstant `List
+
+/--
+info: {"in":1,"str":{"pre":0,"str":"Lean"}}
+{"in":2,"str":{"pre":1,"str":"opaqueId"}}
+{"in":3,"str":{"pre":0,"str":"u"}}
+{"il":1,"param":3}
+{"in":4,"str":{"pre":0,"str":"α"}}
+{"ie":0,"sort":1}
+{"in":5,"str":{"pre":0,"str":"x"}}
+{"bvar":0,"ie":1}
+{"bvar":1,"ie":2}
+{"forallE":{"binderInfo":"default","body":2,"name":5,"type":1},"ie":3}
+{"forallE":{"binderInfo":"implicit","body":3,"name":4,"type":0},"ie":4}
+{"ie":5,"lam":{"binderInfo":"default","body":1,"name":5,"type":1}}
+{"ie":6,"lam":{"binderInfo":"implicit","body":5,"name":4,"type":0}}
+{"opaque":{"all":[2],"isUnsafe":false,"levelParams":[3],"name":2,"type":4,"value":6}}
+-/
+#guard_msgs in
+#eval run do
+  initState (← read).env
+  dumpConstant ``opaqueId
+
+/-!
+Parser tests (we check that that it can be parsed and that the names are correct)
+-/
+
+meta def runParserTest (dump : M Unit) : MetaM Unit := do
+  let bufferRef ← IO.mkRef {data := .empty, pos := 0}
+  let stream := .ofBuffer bufferRef
+  IO.withStdout stream <| do
+    run do
+      initState (← read).env
+      dumpMetadata
+      dump
+  bufferRef.modify fun buf => { buf with pos := 0 }
+  let env ← Export.parseStream stream
+  env.constOrder.forM fun n => IO.println n
+
+
+/--
+info: List
+List.nil
+List.cons
+List.rec
+-/
+#guard_msgs in
+#eval runParserTest do
+  dumpConstant `List
+
+/--
+info: Bool
+Bool.false
+Bool.true
+Bool.rec
+sorryAx
+-/
+#guard_msgs in
+#eval runParserTest do
+  dumpConstant `sorryAx
+
+/--
+info: Eq
+Eq.refl
+Eq.rec
+Quot
+Quot.lift
+-/
+#guard_msgs in
+#eval runParserTest do
+  dumpConstant `Quot.lift
+
+/-- info: Lean.opaqueId -/
+#guard_msgs in
+#eval runParserTest do
+  dumpConstant ``opaqueId
+
+/-- info: Function.const -/
+#guard_msgs in
+#eval runParserTest do
+  dumpConstant ``Function.const
+
+def functionWithLet  : true = true :=
+  let x := true
+  Eq.refl x
+
+/--
+info: Eq
+Eq.refl
+Eq.rec
+Bool
+Bool.false
+Bool.true
+Bool.rec
+functionWithLet
+-/
+#guard_msgs in
+#eval runParserTest do
+  dumpConstant ``functionWithLet
