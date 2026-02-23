@@ -286,21 +286,21 @@ partial def dumpConstant (c : Name) : M Unit := do
         ("all", ← dumpNames val.all)
       ])
     ]
-  | .quotInfo val =>
-    -- Always dump full Quot package (also pulls in Eq)
-    dumpConstant ``Quot
-    dumpConstant ``Quot.mk
-    dumpConstant ``Quot.lift
-    dumpConstant ``Quot.ind
-    dumpConstant ``Quot.sound
-    dumpObj [
-      ("quot", .mkObj [
-        ("name", ← dumpName val.name),
-        ("levelParams", ← dumpUparams val.levelParams),
-        ("type", ← dumpExpr val.type),
-        ("kind", val.kind.toJson)
-      ])
-    ]
+  | .quotInfo _ =>
+    -- Always dump full Quot package in the sensible order
+    dumpConstant ``Eq
+    for c in [`Quot, ``Quot.lift, ``Quot.ind, ``Quot.sound] do
+      let some (.quotInfo val) := (← read).env.find? c
+        | panic! s!"Constant {c} not found in environment."
+      modify fun st => { st with visitedConstants := st.visitedConstants.insert c }
+      dumpObj [
+        ("quot", .mkObj [
+          ("name", ← dumpName val.name),
+          ("levelParams", ← dumpUparams val.levelParams),
+          ("type", ← dumpExpr val.type),
+          ("kind", val.kind.toJson)
+        ])
+      ]
   | .inductInfo baseIndVal => do
     let mut indVals := #[]
     let mut ctorVals := #[]
