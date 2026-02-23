@@ -310,7 +310,22 @@ info: Eq
 Eq.refl
 Eq.rec
 Quot
+Quot.mk
 Quot.lift
+Quot.ind
+-/
+#guard_msgs in
+#eval runParserTest do
+  dumpConstant `Quot.mk
+
+/--
+info: Eq
+Eq.refl
+Eq.rec
+Quot
+Quot.mk
+Quot.lift
+Quot.ind
 -/
 #guard_msgs in
 #eval runParserTest do
