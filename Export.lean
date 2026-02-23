@@ -289,7 +289,7 @@ partial def dumpConstant (c : Name) : M Unit := do
   | .quotInfo _ =>
     -- Always dump full Quot package in the sensible order
     dumpConstant ``Eq
-    for c in [`Quot, ``Quot.lift, ``Quot.ind] do
+    for c in [`Quot, ``Quot.mk, ``Quot.lift, ``Quot.ind] do
       let some (.quotInfo val) := (← read).env.find? c
         | panic! s!"Constant {c} not found in environment."
       modify fun st => { st with visitedConstants := st.visitedConstants.insert c }
