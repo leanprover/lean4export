@@ -287,6 +287,7 @@ partial def dumpConstant (c : Name) : M Unit := do
       ])
     ]
   | .quotInfo val =>
+    dumpConstant ``Eq
     dumpDeps val.type
     dumpObj [
       ("quot", .mkObj [
