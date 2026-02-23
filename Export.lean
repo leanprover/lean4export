@@ -287,8 +287,12 @@ partial def dumpConstant (c : Name) : M Unit := do
       ])
     ]
   | .quotInfo val =>
-    dumpConstant ``Eq
-    dumpDeps val.type
+    -- Always dump full Quot package (also pulls in Eq)
+    dumpConstant ``Quot
+    dumpConstant ``Quot.mk
+    dumpConstant ``Quot.lift
+    dumpConstant ``Quot.ind
+    dumpConstant ``Quot.sound
     dumpObj [
       ("quot", .mkObj [
         ("name", ← dumpName val.name),
