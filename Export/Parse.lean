@@ -76,6 +76,8 @@ def addRecursorRule (ridx : Nat) (r : Lean.RecursorRule) : M Unit := do
 
 @[inline]
 def addConst (name : Lean.Name) (d : Lean.ConstantInfo) : M Unit := do
+  if (← get).constMap.contains name then
+    fail s!"Duplicate declaration: {name}"
   modify fun s => {
     s with
       constMap := s.constMap.insert name d
