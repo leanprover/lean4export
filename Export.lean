@@ -29,7 +29,13 @@ def Lean.DefinitionSafety.toJson : DefinitionSafety → Json
 def Lean.KVMap.toJson (kvs: Lean.KVMap) : Json :=
   .mkObj <| kvs.entries.map (fun (k, v) => (k.toString, reprStr v))
 
+structure Flags where
+  printHelp : Bool := false
+  exportMData : Bool := false
+  exportUnsafe : Bool := false
+
 structure Context where
+  flags : Flags
   env : Environment
 
 structure State where
@@ -38,17 +44,15 @@ structure State where
   visitedExprs : HashMap Expr Nat := HashMap.emptyWithCapacity 10000000
   visitedConstants : NameHashSet := {}
   noMDataExprs : HashMap Expr Expr := HashMap.emptyWithCapacity 100000
-  exportMData : Bool := false
-  exportUnsafe : Bool := false
   /-- Maps the name of an inductive type to a list of names of corresponding recursors.
   This is used to facilitate exporting of related inductives, constructors, and recursors as a unit. -/
   recursorMap : NameMap NameSet := {}
 
 abbrev M := ReaderT Context <| StateT State IO
 
-def M.run (env : Environment) (act : M α) : IO α :=
+def M.run (flags : Flags) (env : Environment) (act : M α) : IO α :=
   StateT.run' (s := {}) do
-    ReaderT.run (r := { env }) do
+    ReaderT.run (r := { env, flags }) do
       act
 
 /--
@@ -58,7 +62,7 @@ of relevant recursors, which is used to ensure that for any inductive
 declaration, the inductives, constructors, and recursors are exported
 together in that order.
 -/
-def initState (env : Environment) (cliOptions : List String := []) : M Unit := do
+def initState (env : Environment) : M Unit := do
   let mut recursorMap : NameMap NameSet := {}
   for (_, constInfo) in env.constants do
     if let .recInfo recVal := constInfo then
@@ -67,11 +71,7 @@ def initState (env : Environment) (cliOptions : List String := []) : M Unit := d
           fun
           | none => some <| NameSet.empty.insert recVal.name
           | some recNames => some <| recNames.insert recVal.name
-  modify fun st => { st with
-    exportMData  := cliOptions.any  (· == "--export-mdata")
-    exportUnsafe := cliOptions.any (· == "--export-unsafe")
-    recursorMap
-  }
+  modify fun st => { st with recursorMap }
 
 /--
 For a given primitive (name, level, expr) to be exported:
@@ -228,12 +228,12 @@ partial def dumpExpr (e : Expr) : M Nat := do
     let aux (e : Expr) : M Expr := do
       modify (fun st => { st with noMDataExprs := HashMap.emptyWithCapacity })
       removeMData e
-    dumpExprAux <| ← if (← get).exportMData then pure e else aux e
+    dumpExprAux <| ← if (← read).flags.exportMData then pure e else aux e
 
 partial def dumpConstant (c : Name) : M Unit := do
   let some declar := (← read).env.find? c
     | panic! s!"Constant {c} not found in environment."
-  if (declar.isUnsafe && !(← get).exportUnsafe) || (← get).visitedConstants.contains c then
+  if (declar.isUnsafe && !(← read).flags.exportUnsafe) || (← get).visitedConstants.contains c then
     return
   modify fun st => { st with visitedConstants := st.visitedConstants.insert c }
   match declar with
@@ -307,12 +307,12 @@ partial def dumpConstant (c : Name) : M Unit := do
     let mut recursorNames := NameSet.empty
     for indName in baseIndVal.all do
       let val := ((← read).env.find? indName |>.get!).inductiveVal!
-      assert! ((!val.isUnsafe) || (← get).exportUnsafe)
+      assert! ((!val.isUnsafe) || (← read).flags.exportUnsafe)
       indVals := indVals.push val
       for ctor in val.ctors do
         match ((← read).env.find? ctor |>.get!) with
         | .ctorInfo ctorVal =>
-          assert! ((!ctorVal.isUnsafe) || (← get).exportUnsafe)
+          assert! ((!ctorVal.isUnsafe) || (← read).flags.exportUnsafe)
           ctorVals := ctorVals.push ctorVal
         | _ => panic! "Expected a `ConstantInfo.ctorInfo`."
       modify fun st => { st with visitedConstants:= st.visitedConstants.insert indName }
@@ -332,7 +332,7 @@ partial def dumpConstant (c : Name) : M Unit := do
     for recursorName in recursorNames do
       match ((← read).env.find? recursorName |>.get!) with
       | .recInfo recVal =>
-        assert! ((!recVal.isUnsafe) || (← get).exportUnsafe)
+        assert! ((!recVal.isUnsafe) || (← read).flags.exportUnsafe)
         recursorVals := recursorVals.push recVal
       | _ => panic! "expected a `constantinfo.recinfo`."
     for recursorVal in recursorVals do
