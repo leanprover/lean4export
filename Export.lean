@@ -33,11 +33,11 @@ structure Context where
   env : Environment
 
 structure State where
-  visitedNames : HashMap Name Nat := HashMap.emptyWithCapacity 200000 |>.insert .anonymous 0
-  visitedLevels : HashMap Level Nat := HashMap.emptyWithCapacity 1000 |>.insert .zero 0
-  visitedExprs : HashMap Expr Nat := HashMap.emptyWithCapacity 10000000
+  visitedNames : Std.HashMap Name Nat := HashMap.empty |>.insert .anonymous 0
+  visitedLevels : Std.HashMap Level Nat := HashMap.empty |>.insert .zero 0
+  visitedExprs : Std.HashMap Expr Nat := {}
   visitedConstants : NameHashSet := {}
-  noMDataExprs : HashMap Expr Expr := HashMap.emptyWithCapacity 100000
+  noMDataExprs : Std.HashMap Expr Expr := {}
   exportMData : Bool := false
   exportUnsafe : Bool := false
   /-- Maps the name of an inductive type to a list of names of corresponding recursors.
@@ -63,10 +63,10 @@ def initState (env : Environment) (cliOptions : List String := []) : M Unit := d
   for (_, constInfo) in env.constants do
     if let .recInfo recVal := constInfo then
       for indName in recVal.all do
-        recursorMap := recursorMap.alter indName <|
-          fun
-          | none => some <| NameSet.empty.insert recVal.name
-          | some recNames => some <| recNames.insert recVal.name
+        if let some recNames := recursorMap.find? indName then
+          recursorMap := recursorMap.insert indName <| recNames.insert recVal.name
+        else
+          recursorMap := recursorMap.insert indName <| NameSet.empty.insert recVal.name
   modify fun st => { st with
     exportMData  := cliOptions.any  (· == "--export-mdata")
     exportUnsafe := cliOptions.any (· == "--export-unsafe")
@@ -79,7 +79,7 @@ IFF it's been seen before, return its index within the export file
 IFF it has not been seen before, add it to the cache, print it into the export, and return its cache index.
 -/
 @[inline]
-def getIdx [Hashable α] [BEq α] (x : α) (namespaced: String) (getM : State → HashMap α Nat) (setM : State → HashMap α Nat → State) (rec : M Json) : M Nat := do
+def getIdx [Hashable α] [BEq α] (x : α) (namespaced: String) (getM : State → Std.HashMap α Nat) (setM : State → Std.HashMap α Nat → State) (rec : M Json) : M Nat := do
   let m ← getM <$> get
   if let some idx := m[x]? then
     return idx
@@ -119,11 +119,11 @@ def dumpLevel (l : Level) : M Nat := getIdx l "il" (·.visitedLevels) ({ · with
 def dumpUparams (uparams : List Name) : M Json := do
   let nameIdxs ← uparams.mapM dumpName
   let _ ← (uparams.map (Level.param)).mapM dumpLevel
-  pure nameIdxs.toJson
+  pure (toJson nameIdxs)
 
 def dumpNames (uparams : List Name) : M Json := do
   let nameIdxs ← uparams.mapM dumpName
-  return nameIdxs.toJson
+  return (toJson nameIdxs)
 
 def removeMData (e : Expr) : M Expr := do
   if let some x := (← get).noMDataExprs[e]? then
@@ -142,7 +142,7 @@ def removeMData (e : Expr) : M Expr := do
     -- (e.g., nanoda_lib) treat expressions as identical regardless of this optimization hint.
     -- Without normalization, the same expression can get different indices, causing parse errors.
     -- See: https://github.com/ammkrn/lean4export/commit/eb023e5
-    pure <| e.updateLet! (← removeMData d) (← removeMData v) (← removeMData b) false
+    pure <| e.updateLet! (← removeMData d) (← removeMData v) (← removeMData b)
   | .forallE _ d b _ =>
     pure <| e.updateForallE! (← removeMData d) (← removeMData b)
   | .proj _ _ e2 =>
@@ -170,7 +170,7 @@ partial def dumpExprAux (e : Expr) : M Nat := do
     | .const n us => return .mkObj [
       ("const", .mkObj [
         ("name", ← dumpName n),
-        ("us", (← us.mapM dumpLevel).toJson)
+        ("us", toJson <| (← us.mapM dumpLevel))
       ])
     ]
     | .app f a => return .mkObj [
@@ -220,13 +220,13 @@ where
     let charOfNat := ``Char.ofNat
     if (!(← get).visitedConstants.contains charOfNat) && ((← read).env.find? charOfNat).isSome
     then dumpConstant charOfNat
-    let stringOfList := ``String.ofList
+    let stringOfList := ``String.mk
     if (!(← get).visitedConstants.contains stringOfList) && ((← read).env.find? stringOfList).isSome
     then dumpConstant stringOfList
 
 partial def dumpExpr (e : Expr) : M Nat := do
     let aux (e : Expr) : M Expr := do
-      modify (fun st => { st with noMDataExprs := HashMap.emptyWithCapacity })
+      modify (fun st => { st with noMDataExprs := HashMap.empty })
       removeMData e
     dumpExprAux <| ← if (← get).exportMData then pure e else aux e
 
@@ -317,7 +317,7 @@ partial def dumpConstant (c : Name) : M Unit := do
         | _ => panic! "Expected a `ConstantInfo.ctorInfo`."
       modify fun st => { st with visitedConstants:= st.visitedConstants.insert indName }
       dumpDeps val.type
-      if let .some names := (← get).recursorMap.get? baseIndVal.name
+      if let .some names := (← get).recursorMap.find? baseIndVal.name
       then recursorNames := recursorNames.union names
       else assert! ctorVals.size == 0
 
@@ -380,15 +380,15 @@ partial def dumpConstant (c : Name) : M Unit := do
           ("numIndices", recursorVal.numIndices),
           ("numMotives", recursorVal.numMotives),
           ("numMinors", recursorVal.numMinors),
-          ("rules", (← recursorVal.rules.mapM dumpRecRule).toJson),
+          ("rules", toJson (← recursorVal.rules.mapM dumpRecRule)),
           ("k", recursorVal.k),
           ("isUnsafe", recursorVal.isUnsafe),
       ]
     dumpObj [
       ("inductive", Json.mkObj [
-        ("types", inductiveValsJson.toJson),
-        ("ctors", ctorValsJson.toJson),
-        ("recs", recursorValsJson.toJson),
+        ("types", toJson inductiveValsJson),
+        ("ctors", toJson ctorValsJson),
+        ("recs", toJson recursorValsJson),
       ])
     ]
   | .ctorInfo val => dumpConstant val.induct
