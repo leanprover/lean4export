@@ -461,7 +461,7 @@ dite
 instDecidableAnd.match_1
 Or.casesOn
 instDecidableOr.match_1
-instDecidableOr._proof_4
+instDecidableOr.proof_1
 instDecidableOr
 LE
 LE.mk
@@ -503,7 +503,7 @@ Eq.symm
 letFun
 cast
 eq_of_heq
-Nat.succ_le_succ.match_1._@.Init.Prelude._hyg.3560
+Nat.succ_le_succ.match_1._@.Init.Prelude._hyg.3555
 HAdd
 HAdd.mk
 HAdd.rec
@@ -517,7 +517,7 @@ instAddNat
 Nat.succ_le_succ
 Nat.le_of_ble_eq_true
 absurd
-Nat.ble_eq_true_of_le.match_1._@.Init.Prelude._hyg.4182
+Nat.ble_eq_true_of_le.match_1._@.Init.Prelude._hyg.4014
 Nat.ble_self_eq_true.match_1
 Nat.ble_self_eq_true
 Nat.ble_succ_eq_true.match_1
@@ -527,15 +527,15 @@ Nat.not_le_of_not_ble_eq_true
 Nat.decLe
 Nat.decLt
 And.right
-instDecidableAnd._proof_2
+instDecidableAnd.proof_1
 And.left
-instDecidableAnd._proof_3
+instDecidableAnd.proof_2
 instDecidableAnd
 BitVec.ofNatLT
 UInt32.size
 And.casesOn
 _private.Init.Prelude.0.isValidChar_UInt32.match_1
-Nat.le_trans.match_1._@.Init.Prelude._hyg.3649
+Nat.le_trans.match_1._@.Init.Prelude._hyg.3644
 Nat.le_trans
 Nat.le_step
 Nat.lt_trans
@@ -548,8 +548,8 @@ decide_eq_false
 of_decide_eq_true
 _private.Init.Prelude.0.isValidChar_UInt32
 Char.ofNatAux
-Char.ofNat._proof_23
-Char.ofNat._proof_24
+Char.ofNat.proof_1
+Char.ofNat.proof_2
 Char.ofNat
 literals
 -/

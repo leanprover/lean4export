@@ -120,11 +120,11 @@ def dumpLevel (l : Level) : M Nat := getIdx l "il" (·.visitedLevels) ({ · with
 def dumpUparams (uparams : List Name) : M Json := do
   let nameIdxs ← uparams.mapM dumpName
   let _ ← (uparams.map (Level.param)).mapM dumpLevel
-  pure nameIdxs.toJson
+  pure <| toJson nameIdxs
 
 def dumpNames (uparams : List Name) : M Json := do
   let nameIdxs ← uparams.mapM dumpName
-  return nameIdxs.toJson
+  return toJson nameIdxs
 
 def removeMData (e : Expr) : M Expr := do
   if let some x := (← get).noMDataExprs[e]? then
@@ -171,7 +171,7 @@ partial def dumpExprAux (e : Expr) : M Nat := do
     | .const n us => return .mkObj [
       ("const", .mkObj [
         ("name", ← dumpName n),
-        ("us", (← us.mapM dumpLevel).toJson)
+        ("us", toJson (← us.mapM dumpLevel))
       ])
     ]
     | .app f a => return .mkObj [
@@ -381,15 +381,15 @@ partial def dumpConstant (c : Name) : M Unit := do
           ("numIndices", recursorVal.numIndices),
           ("numMotives", recursorVal.numMotives),
           ("numMinors", recursorVal.numMinors),
-          ("rules", (← recursorVal.rules.mapM dumpRecRule).toJson),
+          ("rules", toJson (← recursorVal.rules.mapM dumpRecRule)),
           ("k", recursorVal.k),
           ("isUnsafe", recursorVal.isUnsafe),
       ]
     dumpObj [
       ("inductive", Json.mkObj [
-        ("types", inductiveValsJson.toJson),
-        ("ctors", ctorValsJson.toJson),
-        ("recs", recursorValsJson.toJson),
+        ("types", toJson inductiveValsJson),
+        ("ctors", toJson ctorValsJson),
+        ("recs", toJson recursorValsJson),
       ])
     ]
   | .ctorInfo val => dumpConstant val.induct
