@@ -33,11 +33,11 @@ structure Context where
   env : Environment
 
 structure State where
-  visitedNames : HashMap Name Nat := HashMap.emptyWithCapacity 200000 |>.insert .anonymous 0
-  visitedLevels : HashMap Level Nat := HashMap.emptyWithCapacity 1000 |>.insert .zero 0
-  visitedExprs : HashMap Expr Nat := HashMap.emptyWithCapacity 10000000
+  visitedNames : Std.HashMap Name Nat := Std.HashMap.empty |>.insert .anonymous 0
+  visitedLevels : Std.HashMap Level Nat := Std.HashMap.empty |>.insert .zero 0
+  visitedExprs : Std.HashMap Expr Nat := Std.HashMap.empty
   visitedConstants : NameHashSet := {}
-  noMDataExprs : HashMap Expr Expr := HashMap.emptyWithCapacity 100000
+  noMDataExprs : Std.HashMap Expr Expr := Std.HashMap.empty
   exportMData : Bool := false
   exportUnsafe : Bool := false
   /-- Maps the name of an inductive type to a list of names of corresponding recursors.
@@ -80,7 +80,7 @@ IFF it's been seen before, return its index within the export file
 IFF it has not been seen before, add it to the cache, print it into the export, and return its cache index.
 -/
 @[inline]
-def getIdx [Hashable α] [BEq α] (x : α) (namespaced: String) (getM : State → HashMap α Nat) (setM : State → HashMap α Nat → State) (rec : M Json) : M Nat := do
+def getIdx [Hashable α] [BEq α] (x : α) (namespaced: String) (getM : State → Std.HashMap α Nat) (setM : State → Std.HashMap α Nat → State) (rec : M Json) : M Nat := do
   let m ← getM <$> get
   if let some idx := m[x]? then
     return idx
@@ -227,7 +227,7 @@ where
 
 partial def dumpExpr (e : Expr) : M Nat := do
     let aux (e : Expr) : M Expr := do
-      modify (fun st => { st with noMDataExprs := HashMap.emptyWithCapacity })
+      modify (fun st => { st with noMDataExprs := Std.HashMap.empty })
       removeMData e
     dumpExprAux <| ← if (← get).exportMData then pure e else aux e
 

@@ -246,6 +246,11 @@ info: {"str":{"str":"List","pre":0},"in":1}
   dumpConstant `List
 
 /--
+The term `opaqueId x` will not be reduced by the kernel.
+-/
+opaque Lean.opaqueId {α : Sort u} (x : α) : α := x
+
+/--
 info: {"str":{"str":"Lean","pre":0},"in":1}
 {"str":{"str":"opaqueId","pre":1},"in":2}
 {"str":{"str":"u","pre":0},"in":3}
@@ -460,7 +465,7 @@ Decidable.casesOn
 dite
 instDecidableAnd.match_1
 Or.casesOn
-instDecidableOr.match_1
+Or.elim.match_1
 instDecidableOr.proof_1
 instDecidableOr
 LE
@@ -503,7 +508,7 @@ Eq.symm
 letFun
 cast
 eq_of_heq
-Nat.succ_le_succ.match_1._@.Init.Prelude._hyg.3555
+Nat.succ_le_succ.match_1._@.Init.Prelude._hyg.4449
 HAdd
 HAdd.mk
 HAdd.rec
@@ -517,8 +522,8 @@ instAddNat
 Nat.succ_le_succ
 Nat.le_of_ble_eq_true
 absurd
-Nat.ble_eq_true_of_le.match_1._@.Init.Prelude._hyg.4014
-Nat.ble_self_eq_true.match_1
+Nat.ble_eq_true_of_le.match_1._@.Init.Prelude._hyg.5754
+Nat.not_succ_le_zero.match_3
 Nat.ble_self_eq_true
 Nat.ble_succ_eq_true.match_1
 Nat.ble_succ_eq_true
@@ -535,7 +540,7 @@ BitVec.ofNatLT
 UInt32.size
 And.casesOn
 _private.Init.Prelude.0.isValidChar_UInt32.match_1
-Nat.le_trans.match_1._@.Init.Prelude._hyg.3644
+Nat.le_trans.match_1._@.Init.Prelude._hyg.4616
 Nat.le_trans
 Nat.le_step
 Nat.lt_trans
