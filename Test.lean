@@ -4,11 +4,11 @@ open Lean
 
 def run (act : M α) : MetaM Unit := do
   let env ← getEnv
-  let _ ← M.run env (do initState env; act)
+  let _ ← M.run {} env (do initState env; act)
 
 def runEmpty (act : M α) : MetaM Unit := do
   let env ← Lean.mkEmptyEnvironment
-  let _ ← M.run env (do initState env; act)
+  let _ ← M.run {} env (do initState env; act)
 
 /--
 info: {"in":1,"str":{"pre":0,"str":"foo"}}
@@ -721,3 +721,129 @@ literals
 #guard_msgs in
 #eval runParserTest do
   dumpConstant ``literals
+
+def runOpts (args : List String) : MetaM (Option (List Name) × LeanExportOpts) := do
+  let env ← getEnv
+  match parseOpts args with
+    | .error msg => throwError msg
+    | .ok opts =>
+      if opts.shouldExportEverything then
+        return ⟨.none, opts⟩
+      else
+        return ⟨.some <| getRootConstants env opts, opts⟩
+
+/-- error: Could not turn constant `bad const` into an identifier -/
+#guard_msgs in
+#eval runOpts ["--", "bad const"]
+
+/-- error: Could not turn constant `bad module` into an identifier -/
+#guard_msgs in
+#eval runOpts ["--", "bad module"]
+
+/-- error: At least one module must be specified -/
+#guard_msgs in
+#eval runOpts []
+
+/--
+info: (some [],
+ { toFlags := { printHelp := true, exportMData := false, exportUnsafe := false }, modules := #[], constants := [] })
+-/
+#guard_msgs in
+#eval runOpts ["-h"]
+
+/--
+info: (some [`PUnit],
+ { toFlags := { printHelp := false, exportMData := false, exportUnsafe := false },
+   modules := #[],
+   constants := [`PUnit] })
+-/
+#guard_msgs in
+#eval runOpts ["--", "PUnit"]
+
+/--
+info: (some [`bar, `baz, `foo],
+ { toFlags := { printHelp := false, exportMData := false, exportUnsafe := false },
+   modules := #[],
+   constants := [`foo, `bar, `baz] })
+-/
+#guard_msgs in
+#eval runOpts ["--", "foo", "bar", "baz"]
+
+/--
+info: (some [`PUnit],
+ { toFlags := { printHelp := false, exportMData := false, exportUnsafe := false },
+   modules := #[{ name := `Lean, includeAllTheorems := false }, { name := `Prelude, includeAllTheorems := false }],
+   constants := [`PUnit] })
+-/
+#guard_msgs in
+#eval runOpts ["Lean", "Prelude", "--", "PUnit"]
+
+/--
+info: (some [],
+ { toFlags := { printHelp := false, exportMData := false, exportUnsafe := false },
+   modules := #[{ name := `Lean, includeAllTheorems := true }],
+   constants := [] })
+-/
+#guard_msgs in
+#eval runOpts ["--all-theorems", "Lean"]
+
+/--
+info: (some [`Lean.DataValue.ofString.injEq,
+  `Lean.DataValue.ofInt.inj,
+  `Lean.DataValue.ofSyntax.sizeOf_spec,
+  `Lean.KVMap.mk.inj,
+  `Lean.DataValue.ofBool.sizeOf_spec,
+  `Lean.KVMap.mk.injEq,
+  `Lean.DataValue.ofSyntax.injEq,
+  `Lean.DataValue.ofNat.injEq,
+  `Lean.DataValue.ofName.injEq,
+  `Lean.DataValue.ofNat.sizeOf_spec,
+  `Lean.DataValue.ofInt.sizeOf_spec,
+  `Lean.DataValue.ofBool.inj,
+  `Lean.DataValue.ofNat.inj,
+  `Lean.DataValue.ofBool.injEq,
+  `Lean.DataValue.ofString.inj,
+  `Lean.DataValue.ofInt.injEq,
+  `Lean.KVMap.mk.sizeOf_spec,
+  `Lean.DataValue.ofSyntax.inj,
+  `Lean.DataValue.ofName.inj,
+  `Lean.DataValue.ofString.sizeOf_spec,
+  `Lean.DataValue.ofName.sizeOf_spec],
+ { toFlags := { printHelp := false, exportMData := false, exportUnsafe := false },
+   modules := #[{ name := `Lean, includeAllTheorems := false },
+                { name := `Lean.Data.KVMap, includeAllTheorems := true }],
+   constants := [] })
+-/
+#guard_msgs in
+#eval runOpts ["Lean", "--all-theorems", "Lean.Data.KVMap"]
+
+/--
+info: (some [`Lean.DataValue.ofString.injEq,
+  `Lean.DataValue.ofInt.inj,
+  `Lean.DataValue.ofSyntax.sizeOf_spec,
+  `Lean.KVMap.mk.inj,
+  `Lean.DataValue.ofBool.sizeOf_spec,
+  `Lean.KVMap.mk.injEq,
+  `Lean.DataValue.ofSyntax.injEq,
+  `Lean.DataValue.ofNat.injEq,
+  `Lean.DataValue.ofName.injEq,
+  `Lean.DataValue.ofNat.sizeOf_spec,
+  `Lean.DataValue.ofInt.sizeOf_spec,
+  `Lean.DataValue.ofBool.inj,
+  `Lean.DataValue.ofNat.inj,
+  `Lean.DataValue.ofBool.injEq,
+  `Lean.DataValue.ofString.inj,
+  `Lean.DataValue.ofInt.injEq,
+  `Lean.KVMap.mk.sizeOf_spec,
+  `Lean.DataValue.ofSyntax.inj,
+  `Lean.DataValue.ofName.inj,
+  `Lean.DataValue.ofString.sizeOf_spec,
+  `additionalConst,
+  `Lean.DataValue.ofName.sizeOf_spec],
+ { toFlags := { printHelp := false, exportMData := false, exportUnsafe := false },
+   modules := #[{ name := `Lean, includeAllTheorems := false },
+                { name := `Lean.Data.KVMap, includeAllTheorems := true }],
+   constants := [`additionalConst] })
+-/
+#guard_msgs in
+#eval runOpts ["Lean", "--all-theorems", "Lean.Data.KVMap", "--", "additionalConst"]

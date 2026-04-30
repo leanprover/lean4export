@@ -20,7 +20,7 @@ We can invoke the exporter on the "top level" mathlib file and export mathlib wi
 ```sh
 lake env ../.lake/build/bin/lean4export Mathlib > out.ndjson
 ```
-This exports the contents of the given Lean module (here just the top level `Mathlib` module in the `Mathlib.lean` file), and its transitive dependencies. 
+This exports all contents of the given Lean module (here just the top level `Mathlib` module in the `Mathlib.lean` file), and all the contents of that module's transitive dependencies. 
 
 More than one module can be passed to the initial invocation by including more than one name (separated with a space).
 
@@ -30,8 +30,15 @@ The option `--export-unsafe` can be used to include unsafe declarations in the e
 
 The option `--export-mdata"` can be used to include `Expr.mdata` items in the export file, which are removed by default as they should not have an effect on type checking.
 
-By default, all constants in the environment are exported, except for those excluded by `--export-unsafe` or `--export-mdata`, are exported.
-To instead export only the constants directly mentioned in the specified modules (and their transitive dependencies), use option command `--all-module-constants`.
-Alternatively, to export specific set of constants (and their transitive dependencies), list them after the argument `--`, separated by spaces.
+The option `--help` prints usage information and then exits.
 
-The option `--help` prints usage information.
+The default behavior of exporting all constants can be modified by describing specific constants to export. Lean4export will import only those constants and their transitive dependencies.
+
+ * The argument `--all-theorems <ModuleName>` will include all theorems in a specific module.
+ * The argument `--` can be followed by a list of specific constants.
+
+As an example, this command will export only the constants necessary to support the theorem `EuclideanGeometry.dist_inversion_inversion` as well all the theorems in Mathlib's `Mathlib/Algebra/Module/NatInt.lean` module.
+```sh
+lake env ../.lake/build/bin/lean4export Mathlib --theorems-from Mathlib.Algebra.Module.NatInt -- EuclideanGeometry.dist_inversion_inversion
+```
+
