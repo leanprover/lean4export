@@ -11,154 +11,153 @@ def runEmpty (act : M α) : MetaM Unit := do
   let _ ← M.run env (do initState env; act)
 
 /--
-info: {"in":1,"str":{"pre":0,"str":"foo"}}
-{"in":2,"str":{"pre":1,"str":"bla"}}
-{"in":3,"num":{"i":1,"pre":2}}
-{"in":4,"str":{"pre":3,"str":"boo"}}
+info: {"str":{"str":"foo","pre":0},"in":1}
+{"str":{"str":"bla","pre":1},"in":2}
+{"num":{"pre":2,"i":1},"in":3}
+{"str":{"str":"boo","pre":3},"in":4}
 -/
 #guard_msgs in
 #eval run <| dumpName (`foo.bla |>.num 1 |>.str "boo")
 
-/--
-info: {"in":1,"str":{"pre":0,"str":"\npq\n  \nrs\u0009\r\nuv\n\n"}}
--/
+/-- info: {"str":{"str":"\npq\n  \nrs\u0009\r\nuv\n\n","pre":0},"in":1} -/
 #guard_msgs in
 #eval run <| dumpName (Name.str Name.anonymous "\npq\n  \nrs\t\r\nuv\n\n")
 
 /--
-info: {"il":1,"succ":0}
-{"il":2,"succ":1}
-{"in":1,"str":{"pre":0,"str":"l1"}}
-{"il":3,"param":1}
-{"il":4,"max":[2,3]}
-{"in":2,"str":{"pre":0,"str":"l2"}}
-{"il":5,"param":2}
-{"il":6,"imax":[4,5]}
+info: {"succ":0,"il":1}
+{"succ":1,"il":2}
+{"str":{"str":"l1","pre":0},"in":1}
+{"param":1,"il":3}
+{"max":[2,3],"il":4}
+{"str":{"str":"l2","pre":0},"in":2}
+{"param":2,"il":5}
+{"imax":[4,5],"il":6}
 -/
 #guard_msgs in
 #eval run <| dumpLevel (.imax (.max (.succ (.succ .zero)) (.param `l1)) (.param `l2))
 
 /--
-info: {"in":1,"str":{"pre":0,"str":"A"}}
-{"il":1,"succ":0}
-{"ie":0,"sort":1}
-{"in":2,"str":{"pre":0,"str":"a"}}
-{"bvar":0,"ie":1}
-{"ie":2,"lam":{"binderInfo":"default","body":1,"name":2,"type":1}}
-{"ie":3,"lam":{"binderInfo":"implicit","body":2,"name":1,"type":0}}
+info: {"str":{"str":"A","pre":0},"in":1}
+{"succ":0,"il":1}
+{"sort":1,"ie":0}
+{"str":{"str":"a","pre":0},"in":2}
+{"ie":1,"bvar":0}
+{"lam":{"type":1,"name":2,"body":1,"binderInfo":"default"},"ie":2}
+{"lam":{"type":0,"name":1,"body":2,"binderInfo":"implicit"},"ie":3}
 -/
 #guard_msgs in
 #eval run <| dumpExpr (.lam `A (.sort (.succ .zero)) (.lam `a (.bvar 0) (.bvar 0) .default) .implicit)
 
 /--
-info: {"in":1,"str":{"pre":0,"str":"x"}}
-{"in":2,"str":{"pre":0,"str":"Nat"}}
-{"const":{"name":2,"us":[]},"ie":0}
-{"in":3,"str":{"pre":2,"str":"zero"}}
-{"const":{"name":3,"us":[]},"ie":1}
-{"bvar":0,"ie":2}
-{"ie":3,"letE":{"body":2,"name":1,"nondep":false,"type":0,"value":1}}
+info: {"str":{"str":"x","pre":0},"in":1}
+{"str":{"str":"Nat","pre":0},"in":2}
+{"ie":0,"const":{"us":[],"name":2}}
+{"str":{"str":"zero","pre":2},"in":3}
+{"ie":1,"const":{"us":[],"name":3}}
+{"ie":2,"bvar":0}
+{"letE":{"value":1,"type":0,"nondep":false,"name":1,"body":2},"ie":3}
 -/
 #guard_msgs in
 #eval run <| dumpExpr (.letE `x (.const `Nat []) (.const `Nat.zero []) (.bvar 0) false)
 
 /--
-info: {"in":1,"str":{"pre":0,"str":"Prod"}}
-{"bvar":0,"ie":0}
-{"ie":1,"proj":{"idx":1,"struct":0,"typeName":1}}
+info: {"str":{"str":"Prod","pre":0},"in":1}
+{"ie":0,"bvar":0}
+{"proj":{"typeName":1,"struct":0,"idx":1},"ie":1}
 -/
 #guard_msgs in
 #eval run <| dumpExpr (.proj `Prod 1 (.bvar 0))
 
-/-- info: {"ie":0,"natVal":"100000000000000023456789"}
--/
+/-- info: {"natVal":"100000000000000023456789","ie":0} -/
 #guard_msgs in
 #eval runEmpty <| dumpExpr (.lit (.natVal 100000000000000023456789))
 
 /--
-info: {"in":1,"str":{"pre":0,"str":"Nat"}}
-{"il":1,"succ":0}
-{"ie":0,"sort":1}
-{"in":2,"str":{"pre":1,"str":"zero"}}
-{"in":3,"str":{"pre":1,"str":"succ"}}
-{"const":{"name":1,"us":[]},"ie":1}
-{"in":4,"str":{"pre":0,"str":"n"}}
-{"forallE":{"binderInfo":"default","body":1,"name":4,"type":1},"ie":2}
-{"in":5,"str":{"pre":1,"str":"rec"}}
-{"in":6,"str":{"pre":0,"str":"u"}}
-{"il":2,"param":6}
-{"in":7,"str":{"pre":0,"str":"motive"}}
-{"in":8,"str":{"pre":0,"str":"t"}}
-{"ie":3,"sort":2}
-{"forallE":{"binderInfo":"default","body":3,"name":8,"type":1},"ie":4}
-{"in":9,"str":{"pre":0,"str":"zero"}}
-{"bvar":0,"ie":5}
-{"const":{"name":2,"us":[]},"ie":6}
-{"app":{"arg":6,"fn":5},"ie":7}
-{"in":10,"str":{"pre":0,"str":"succ"}}
-{"in":11,"str":{"pre":0,"str":"n_ih"}}
-{"bvar":2,"ie":8}
-{"app":{"arg":5,"fn":8},"ie":9}
-{"bvar":3,"ie":10}
-{"const":{"name":3,"us":[]},"ie":11}
-{"bvar":1,"ie":12}
-{"app":{"arg":12,"fn":11},"ie":13}
-{"app":{"arg":13,"fn":10},"ie":14}
-{"forallE":{"binderInfo":"default","body":14,"name":11,"type":9},"ie":15}
-{"forallE":{"binderInfo":"default","body":15,"name":4,"type":1},"ie":16}
-{"app":{"arg":5,"fn":10},"ie":17}
-{"forallE":{"binderInfo":"default","body":17,"name":8,"type":1},"ie":18}
-{"forallE":{"binderInfo":"default","body":18,"name":10,"type":16},"ie":19}
-{"forallE":{"binderInfo":"default","body":19,"name":9,"type":7},"ie":20}
-{"forallE":{"binderInfo":"implicit","body":20,"name":7,"type":4},"ie":21}
-{"ie":22,"lam":{"binderInfo":"default","body":12,"name":10,"type":16}}
-{"ie":23,"lam":{"binderInfo":"default","body":22,"name":9,"type":7}}
-{"ie":24,"lam":{"binderInfo":"default","body":23,"name":7,"type":4}}
-{"app":{"arg":5,"fn":12},"ie":25}
-{"const":{"name":5,"us":[2]},"ie":26}
-{"app":{"arg":10,"fn":26},"ie":27}
-{"app":{"arg":8,"fn":27},"ie":28}
-{"app":{"arg":12,"fn":28},"ie":29}
-{"app":{"arg":5,"fn":29},"ie":30}
-{"app":{"arg":30,"fn":25},"ie":31}
-{"ie":32,"lam":{"binderInfo":"default","body":31,"name":4,"type":1}}
-{"ie":33,"lam":{"binderInfo":"default","body":32,"name":10,"type":16}}
-{"ie":34,"lam":{"binderInfo":"default","body":33,"name":9,"type":7}}
-{"ie":35,"lam":{"binderInfo":"default","body":34,"name":7,"type":4}}
-{"inductive":{"ctors":[{"cidx":0,"induct":1,"isUnsafe":false,"levelParams":[],"name":2,"numFields":0,"numParams":0,"type":1},{"cidx":1,"induct":1,"isUnsafe":false,"levelParams":[],"name":3,"numFields":1,"numParams":0,"type":2}],"recs":[{"all":[1],"isUnsafe":false,"k":false,"levelParams":[6],"name":5,"numIndices":0,"numMinors":2,"numMotives":1,"numParams":0,"rules":[{"ctor":2,"nfields":0,"rhs":24},{"ctor":3,"nfields":1,"rhs":35}],"type":21}],"types":[{"all":[1],"ctors":[2,3],"isRec":true,"isReflexive":false,"isUnsafe":false,"levelParams":[],"name":1,"numIndices":0,"numNested":0,"numParams":0,"type":0}]}}
-{"ie":36,"natVal":"100000000000000023456789"}
+info: {"str":{"str":"Nat","pre":0},"in":1}
+{"succ":0,"il":1}
+{"sort":1,"ie":0}
+{"str":{"str":"zero","pre":1},"in":2}
+{"str":{"str":"succ","pre":1},"in":3}
+{"ie":1,"const":{"us":[],"name":1}}
+{"str":{"str":"n","pre":0},"in":4}
+{"ie":2,"forallE":{"type":1,"name":4,"body":1,"binderInfo":"default"}}
+{"str":{"str":"rec","pre":1},"in":5}
+{"str":{"str":"u","pre":0},"in":6}
+{"param":6,"il":2}
+{"str":{"str":"motive","pre":0},"in":7}
+{"str":{"str":"t","pre":0},"in":8}
+{"sort":2,"ie":3}
+{"ie":4,"forallE":{"type":1,"name":8,"body":3,"binderInfo":"default"}}
+{"str":{"str":"zero","pre":0},"in":9}
+{"ie":5,"bvar":0}
+{"ie":6,"const":{"us":[],"name":2}}
+{"ie":7,"app":{"fn":5,"arg":6}}
+{"str":{"str":"succ","pre":0},"in":10}
+{"str":{"str":"n_ih","pre":0},"in":11}
+{"ie":8,"bvar":2}
+{"ie":9,"app":{"fn":8,"arg":5}}
+{"ie":10,"bvar":3}
+{"ie":11,"const":{"us":[],"name":3}}
+{"ie":12,"bvar":1}
+{"ie":13,"app":{"fn":11,"arg":12}}
+{"ie":14,"app":{"fn":10,"arg":13}}
+{"ie":15,"forallE":{"type":9,"name":11,"body":14,"binderInfo":"default"}}
+{"ie":16,"forallE":{"type":1,"name":4,"body":15,"binderInfo":"default"}}
+{"ie":17,"app":{"fn":10,"arg":5}}
+{"ie":18,"forallE":{"type":1,"name":8,"body":17,"binderInfo":"default"}}
+{"ie":19,"forallE":{"type":16,"name":10,"body":18,"binderInfo":"default"}}
+{"ie":20,"forallE":{"type":7,"name":9,"body":19,"binderInfo":"default"}}
+{"ie":21,"forallE":{"type":4,"name":7,"body":20,"binderInfo":"implicit"}}
+{"lam":{"type":16,"name":10,"body":12,"binderInfo":"default"},"ie":22}
+{"lam":{"type":7,"name":9,"body":22,"binderInfo":"default"},"ie":23}
+{"lam":{"type":4,"name":7,"body":23,"binderInfo":"default"},"ie":24}
+{"ie":25,"app":{"fn":12,"arg":5}}
+{"ie":26,"const":{"us":[2],"name":5}}
+{"ie":27,"app":{"fn":26,"arg":10}}
+{"ie":28,"app":{"fn":27,"arg":8}}
+{"ie":29,"app":{"fn":28,"arg":12}}
+{"ie":30,"app":{"fn":29,"arg":5}}
+{"ie":31,"app":{"fn":25,"arg":30}}
+{"lam":{"type":1,"name":4,"body":31,"binderInfo":"default"},"ie":32}
+{"lam":{"type":16,"name":10,"body":32,"binderInfo":"default"},"ie":33}
+{"lam":{"type":7,"name":9,"body":33,"binderInfo":"default"},"ie":34}
+{"lam":{"type":4,"name":7,"body":34,"binderInfo":"default"},"ie":35}
+{"inductive":{"types":[{"type":0,"numParams":0,"numNested":0,"numIndices":0,"name":1,"levelParams":[],"isUnsafe":false,"isReflexive":false,"isRec":true,"ctors":[2,3],"all":[1]}],"recs":[{"type":21,"rules":[{"rhs":24,"nfields":0,"ctor":2},{"rhs":35,"nfields":1,"ctor":3}],"numParams":0,"numMotives":1,"numMinors":2,"numIndices":0,"name":5,"levelParams":[6],"k":false,"isUnsafe":false,"all":[1]}],"ctors":[{"type":1,"numParams":0,"numFields":0,"name":2,"levelParams":[],"isUnsafe":false,"induct":1,"cidx":0},{"type":2,"numParams":0,"numFields":1,"name":3,"levelParams":[],"isUnsafe":false,"induct":1,"cidx":1}]}}
+{"natVal":"100000000000000023456789","ie":36}
 -/
 #guard_msgs in
 #eval run <| dumpExpr (.lit (.natVal 100000000000000023456789))
 
-/-- info: {"ie":0,"strVal":"hi"} -/
+/-- info: {"strVal":"hi","ie":0} -/
 #guard_msgs in
 #eval runEmpty <| dumpExpr (.lit (.strVal "hi"))
 
-/-- info: {"ie":0,"strVal":"\r\rh\ni\u0009\u0009"} -/
+/-- info: {"strVal":"\r\rh\ni\u0009\u0009","ie":0} -/
 #guard_msgs in
 #eval runEmpty <| dumpExpr (.lit (.strVal "\r\rh
 i\t\t"))
 
-/-- info: {"ie":0,"strVal":"اَلْعَرَبِيَّةُ اُرْدُو 普通话 日本語 廣東話 русский язык עִבְרִית‎ 한국어 aаoοpр"} -/
+/--
+info: {"strVal":"اَلْعَرَبِيَّةُ اُرْدُو 普通话 日本語 廣東話 русский язык עִבְרִית‎ 한국어 aаoοpр","ie":0}
+-/
 #guard_msgs in
 #eval runEmpty <| dumpExpr
   (.lit (.strVal "اَلْعَرَبِيَّةُ اُرْدُو 普通话 日本語 廣東話 русский язык עִבְרִית‎ 한국어 aаoοpр"))
 
 /--
-info: {"in":1,"str":{"pre":0,"str":"id"}}
-{"in":2,"str":{"pre":0,"str":"u"}}
-{"il":1,"param":2}
-{"in":3,"str":{"pre":0,"str":"α"}}
-{"ie":0,"sort":1}
-{"in":4,"str":{"pre":0,"str":"a"}}
-{"bvar":0,"ie":1}
-{"bvar":1,"ie":2}
-{"forallE":{"binderInfo":"default","body":2,"name":4,"type":1},"ie":3}
-{"forallE":{"binderInfo":"implicit","body":3,"name":3,"type":0},"ie":4}
-{"ie":5,"lam":{"binderInfo":"default","body":1,"name":4,"type":1}}
-{"ie":6,"lam":{"binderInfo":"implicit","body":5,"name":3,"type":0}}
-{"def":{"all":[1],"hints":{"regular":1},"levelParams":[2],"name":1,"safety":"safe","type":4,"value":6}}
+info: {"str":{"str":"id","pre":0},"in":1}
+{"str":{"str":"u","pre":0},"in":2}
+{"param":2,"il":1}
+{"str":{"str":"α","pre":0},"in":3}
+{"sort":1,"ie":0}
+{"str":{"str":"a","pre":0},"in":4}
+{"ie":1,"bvar":0}
+{"ie":2,"bvar":1}
+{"ie":3,"forallE":{"type":1,"name":4,"body":2,"binderInfo":"default"}}
+{"ie":4,"forallE":{"type":0,"name":3,"body":3,"binderInfo":"implicit"}}
+{"lam":{"type":1,"name":4,"body":1,"binderInfo":"default"},"ie":5}
+{"lam":{"type":0,"name":3,"body":5,"binderInfo":"implicit"},"ie":6}
+{"def":{"value":6,"type":4,"safety":"safe","name":1,"levelParams":[2],"hints":{"regular":1},"all":[1]}}
 -/
 #guard_msgs in
 #eval run <| do
@@ -166,80 +165,80 @@ info: {"in":1,"str":{"pre":0,"str":"id"}}
   dumpConstant `id
 
 /--
-info: {"in":1,"str":{"pre":0,"str":"List"}}
-{"in":2,"str":{"pre":0,"str":"u"}}
-{"il":1,"param":2}
-{"in":3,"str":{"pre":0,"str":"α"}}
-{"il":2,"succ":1}
-{"ie":0,"sort":2}
-{"forallE":{"binderInfo":"default","body":0,"name":3,"type":0},"ie":1}
-{"in":4,"str":{"pre":1,"str":"nil"}}
-{"in":5,"str":{"pre":1,"str":"cons"}}
-{"const":{"name":1,"us":[1]},"ie":2}
-{"bvar":0,"ie":3}
-{"app":{"arg":3,"fn":2},"ie":4}
-{"forallE":{"binderInfo":"implicit","body":4,"name":3,"type":0},"ie":5}
-{"in":6,"str":{"pre":0,"str":"head"}}
-{"in":7,"str":{"pre":0,"str":"tail"}}
-{"bvar":1,"ie":6}
-{"app":{"arg":6,"fn":2},"ie":7}
-{"bvar":2,"ie":8}
-{"app":{"arg":8,"fn":2},"ie":9}
-{"forallE":{"binderInfo":"default","body":9,"name":7,"type":7},"ie":10}
-{"forallE":{"binderInfo":"default","body":10,"name":6,"type":3},"ie":11}
-{"forallE":{"binderInfo":"implicit","body":11,"name":3,"type":0},"ie":12}
-{"in":8,"str":{"pre":1,"str":"rec"}}
-{"in":9,"str":{"pre":0,"str":"u_1"}}
-{"il":3,"param":9}
-{"in":10,"str":{"pre":0,"str":"motive"}}
-{"in":11,"str":{"pre":0,"str":"t"}}
-{"ie":13,"sort":3}
-{"forallE":{"binderInfo":"default","body":13,"name":11,"type":4},"ie":14}
-{"in":12,"str":{"pre":0,"str":"nil"}}
-{"const":{"name":4,"us":[1]},"ie":15}
-{"app":{"arg":6,"fn":15},"ie":16}
-{"app":{"arg":16,"fn":3},"ie":17}
-{"in":13,"str":{"pre":0,"str":"cons"}}
-{"bvar":3,"ie":18}
-{"app":{"arg":18,"fn":2},"ie":19}
-{"in":14,"str":{"pre":0,"str":"tail_ih"}}
-{"app":{"arg":3,"fn":18},"ie":20}
-{"bvar":4,"ie":21}
-{"const":{"name":5,"us":[1]},"ie":22}
-{"bvar":5,"ie":23}
-{"app":{"arg":23,"fn":22},"ie":24}
-{"app":{"arg":8,"fn":24},"ie":25}
-{"app":{"arg":6,"fn":25},"ie":26}
-{"app":{"arg":26,"fn":21},"ie":27}
-{"forallE":{"binderInfo":"default","body":27,"name":14,"type":20},"ie":28}
-{"forallE":{"binderInfo":"default","body":28,"name":7,"type":19},"ie":29}
-{"forallE":{"binderInfo":"default","body":29,"name":6,"type":8},"ie":30}
-{"forallE":{"binderInfo":"default","body":20,"name":11,"type":19},"ie":31}
-{"forallE":{"binderInfo":"default","body":31,"name":13,"type":30},"ie":32}
-{"forallE":{"binderInfo":"default","body":32,"name":12,"type":17},"ie":33}
-{"forallE":{"binderInfo":"implicit","body":33,"name":10,"type":14},"ie":34}
-{"forallE":{"binderInfo":"implicit","body":34,"name":3,"type":0},"ie":35}
-{"ie":36,"lam":{"binderInfo":"default","body":6,"name":13,"type":30}}
-{"ie":37,"lam":{"binderInfo":"default","body":36,"name":12,"type":17}}
-{"ie":38,"lam":{"binderInfo":"default","body":37,"name":10,"type":14}}
-{"ie":39,"lam":{"binderInfo":"default","body":38,"name":3,"type":0}}
-{"app":{"arg":21,"fn":2},"ie":40}
-{"app":{"arg":6,"fn":8},"ie":41}
-{"app":{"arg":3,"fn":41},"ie":42}
-{"const":{"name":8,"us":[3,1]},"ie":43}
-{"app":{"arg":23,"fn":43},"ie":44}
-{"app":{"arg":21,"fn":44},"ie":45}
-{"app":{"arg":18,"fn":45},"ie":46}
-{"app":{"arg":8,"fn":46},"ie":47}
-{"app":{"arg":3,"fn":47},"ie":48}
-{"app":{"arg":48,"fn":42},"ie":49}
-{"ie":50,"lam":{"binderInfo":"default","body":49,"name":7,"type":40}}
-{"ie":51,"lam":{"binderInfo":"default","body":50,"name":6,"type":18}}
-{"ie":52,"lam":{"binderInfo":"default","body":51,"name":13,"type":30}}
-{"ie":53,"lam":{"binderInfo":"default","body":52,"name":12,"type":17}}
-{"ie":54,"lam":{"binderInfo":"default","body":53,"name":10,"type":14}}
-{"ie":55,"lam":{"binderInfo":"default","body":54,"name":3,"type":0}}
-{"inductive":{"ctors":[{"cidx":0,"induct":1,"isUnsafe":false,"levelParams":[2],"name":4,"numFields":0,"numParams":1,"type":5},{"cidx":1,"induct":1,"isUnsafe":false,"levelParams":[2],"name":5,"numFields":2,"numParams":1,"type":12}],"recs":[{"all":[1],"isUnsafe":false,"k":false,"levelParams":[9,2],"name":8,"numIndices":0,"numMinors":2,"numMotives":1,"numParams":1,"rules":[{"ctor":4,"nfields":0,"rhs":39},{"ctor":5,"nfields":2,"rhs":55}],"type":35}],"types":[{"all":[1],"ctors":[4,5],"isRec":true,"isReflexive":false,"isUnsafe":false,"levelParams":[2],"name":1,"numIndices":0,"numNested":0,"numParams":1,"type":1}]}}
+info: {"str":{"str":"List","pre":0},"in":1}
+{"str":{"str":"u","pre":0},"in":2}
+{"param":2,"il":1}
+{"str":{"str":"α","pre":0},"in":3}
+{"succ":1,"il":2}
+{"sort":2,"ie":0}
+{"ie":1,"forallE":{"type":0,"name":3,"body":0,"binderInfo":"default"}}
+{"str":{"str":"nil","pre":1},"in":4}
+{"str":{"str":"cons","pre":1},"in":5}
+{"ie":2,"const":{"us":[1],"name":1}}
+{"ie":3,"bvar":0}
+{"ie":4,"app":{"fn":2,"arg":3}}
+{"ie":5,"forallE":{"type":0,"name":3,"body":4,"binderInfo":"implicit"}}
+{"str":{"str":"head","pre":0},"in":6}
+{"str":{"str":"tail","pre":0},"in":7}
+{"ie":6,"bvar":1}
+{"ie":7,"app":{"fn":2,"arg":6}}
+{"ie":8,"bvar":2}
+{"ie":9,"app":{"fn":2,"arg":8}}
+{"ie":10,"forallE":{"type":7,"name":7,"body":9,"binderInfo":"default"}}
+{"ie":11,"forallE":{"type":3,"name":6,"body":10,"binderInfo":"default"}}
+{"ie":12,"forallE":{"type":0,"name":3,"body":11,"binderInfo":"implicit"}}
+{"str":{"str":"rec","pre":1},"in":8}
+{"str":{"str":"u_1","pre":0},"in":9}
+{"param":9,"il":3}
+{"str":{"str":"motive","pre":0},"in":10}
+{"str":{"str":"t","pre":0},"in":11}
+{"sort":3,"ie":13}
+{"ie":14,"forallE":{"type":4,"name":11,"body":13,"binderInfo":"default"}}
+{"str":{"str":"nil","pre":0},"in":12}
+{"ie":15,"const":{"us":[1],"name":4}}
+{"ie":16,"app":{"fn":15,"arg":6}}
+{"ie":17,"app":{"fn":3,"arg":16}}
+{"str":{"str":"cons","pre":0},"in":13}
+{"ie":18,"bvar":3}
+{"ie":19,"app":{"fn":2,"arg":18}}
+{"str":{"str":"tail_ih","pre":0},"in":14}
+{"ie":20,"app":{"fn":18,"arg":3}}
+{"ie":21,"bvar":4}
+{"ie":22,"const":{"us":[1],"name":5}}
+{"ie":23,"bvar":5}
+{"ie":24,"app":{"fn":22,"arg":23}}
+{"ie":25,"app":{"fn":24,"arg":8}}
+{"ie":26,"app":{"fn":25,"arg":6}}
+{"ie":27,"app":{"fn":21,"arg":26}}
+{"ie":28,"forallE":{"type":20,"name":14,"body":27,"binderInfo":"default"}}
+{"ie":29,"forallE":{"type":19,"name":7,"body":28,"binderInfo":"default"}}
+{"ie":30,"forallE":{"type":8,"name":6,"body":29,"binderInfo":"default"}}
+{"ie":31,"forallE":{"type":19,"name":11,"body":20,"binderInfo":"default"}}
+{"ie":32,"forallE":{"type":30,"name":13,"body":31,"binderInfo":"default"}}
+{"ie":33,"forallE":{"type":17,"name":12,"body":32,"binderInfo":"default"}}
+{"ie":34,"forallE":{"type":14,"name":10,"body":33,"binderInfo":"implicit"}}
+{"ie":35,"forallE":{"type":0,"name":3,"body":34,"binderInfo":"implicit"}}
+{"lam":{"type":30,"name":13,"body":6,"binderInfo":"default"},"ie":36}
+{"lam":{"type":17,"name":12,"body":36,"binderInfo":"default"},"ie":37}
+{"lam":{"type":14,"name":10,"body":37,"binderInfo":"default"},"ie":38}
+{"lam":{"type":0,"name":3,"body":38,"binderInfo":"default"},"ie":39}
+{"ie":40,"app":{"fn":2,"arg":21}}
+{"ie":41,"app":{"fn":8,"arg":6}}
+{"ie":42,"app":{"fn":41,"arg":3}}
+{"ie":43,"const":{"us":[3,1],"name":8}}
+{"ie":44,"app":{"fn":43,"arg":23}}
+{"ie":45,"app":{"fn":44,"arg":21}}
+{"ie":46,"app":{"fn":45,"arg":18}}
+{"ie":47,"app":{"fn":46,"arg":8}}
+{"ie":48,"app":{"fn":47,"arg":3}}
+{"ie":49,"app":{"fn":42,"arg":48}}
+{"lam":{"type":40,"name":7,"body":49,"binderInfo":"default"},"ie":50}
+{"lam":{"type":18,"name":6,"body":50,"binderInfo":"default"},"ie":51}
+{"lam":{"type":30,"name":13,"body":51,"binderInfo":"default"},"ie":52}
+{"lam":{"type":17,"name":12,"body":52,"binderInfo":"default"},"ie":53}
+{"lam":{"type":14,"name":10,"body":53,"binderInfo":"default"},"ie":54}
+{"lam":{"type":0,"name":3,"body":54,"binderInfo":"default"},"ie":55}
+{"inductive":{"types":[{"type":1,"numParams":1,"numNested":0,"numIndices":0,"name":1,"levelParams":[2],"isUnsafe":false,"isReflexive":false,"isRec":true,"ctors":[4,5],"all":[1]}],"recs":[{"type":35,"rules":[{"rhs":39,"nfields":0,"ctor":4},{"rhs":55,"nfields":2,"ctor":5}],"numParams":1,"numMotives":1,"numMinors":2,"numIndices":0,"name":8,"levelParams":[9,2],"k":false,"isUnsafe":false,"all":[1]}],"ctors":[{"type":5,"numParams":1,"numFields":0,"name":4,"levelParams":[2],"isUnsafe":false,"induct":1,"cidx":0},{"type":12,"numParams":1,"numFields":2,"name":5,"levelParams":[2],"isUnsafe":false,"induct":1,"cidx":1}]}}
 -/
 #guard_msgs in
 #eval run do
@@ -247,20 +246,20 @@ info: {"in":1,"str":{"pre":0,"str":"List"}}
   dumpConstant `List
 
 /--
-info: {"in":1,"str":{"pre":0,"str":"Lean"}}
-{"in":2,"str":{"pre":1,"str":"opaqueId"}}
-{"in":3,"str":{"pre":0,"str":"u"}}
-{"il":1,"param":3}
-{"in":4,"str":{"pre":0,"str":"α"}}
-{"ie":0,"sort":1}
-{"in":5,"str":{"pre":0,"str":"x"}}
-{"bvar":0,"ie":1}
-{"bvar":1,"ie":2}
-{"forallE":{"binderInfo":"default","body":2,"name":5,"type":1},"ie":3}
-{"forallE":{"binderInfo":"implicit","body":3,"name":4,"type":0},"ie":4}
-{"ie":5,"lam":{"binderInfo":"default","body":1,"name":5,"type":1}}
-{"ie":6,"lam":{"binderInfo":"implicit","body":5,"name":4,"type":0}}
-{"opaque":{"all":[2],"isUnsafe":false,"levelParams":[3],"name":2,"type":4,"value":6}}
+info: {"str":{"str":"Lean","pre":0},"in":1}
+{"str":{"str":"opaqueId","pre":1},"in":2}
+{"str":{"str":"u","pre":0},"in":3}
+{"param":3,"il":1}
+{"str":{"str":"α","pre":0},"in":4}
+{"sort":1,"ie":0}
+{"str":{"str":"x","pre":0},"in":5}
+{"ie":1,"bvar":0}
+{"ie":2,"bvar":1}
+{"ie":3,"forallE":{"type":1,"name":5,"body":2,"binderInfo":"default"}}
+{"ie":4,"forallE":{"type":0,"name":4,"body":3,"binderInfo":"implicit"}}
+{"lam":{"type":1,"name":5,"body":1,"binderInfo":"default"},"ie":5}
+{"lam":{"type":0,"name":4,"body":5,"binderInfo":"implicit"},"ie":6}
+{"opaque":{"value":6,"type":4,"name":2,"levelParams":[3],"isUnsafe":false,"all":[2]}}
 -/
 #guard_msgs in
 #eval run do
@@ -503,7 +502,7 @@ Nat.le.below.casesOn
 Eq.symm
 cast
 eq_of_heq
-_private.Init.Prelude.0.Nat.succ_le_succ.match_1_4
+_private.Init.Prelude.0.Nat.succ_le_succ.match_1_1._@.Init.Prelude._hyg.3691
 HAdd
 HAdd.mk
 HAdd.rec
@@ -517,7 +516,7 @@ instAddNat
 Nat.succ_le_succ
 Nat.le_of_ble_eq_true
 absurd
-_private.Init.Prelude.0.Nat.ble_eq_true_of_le.match_1_4
+_private.Init.Prelude.0.Nat.ble_eq_true_of_le.match_1_1._@.Init.Prelude._hyg.4309
 _private.Init.Prelude.0.Nat.ble_self_eq_true.match_1_1
 Nat.ble_self_eq_true
 _private.Init.Prelude.0.Nat.ble_succ_eq_true.match_1_1
@@ -535,7 +534,7 @@ BitVec.ofNatLT
 UInt32.size
 And.casesOn
 _private.Init.Prelude.0.isValidChar_UInt32.match_1_1
-_private.Init.Prelude.0.Nat.le_trans.match_1_6
+_private.Init.Prelude.0.Nat.le_trans.match_1_1._@.Init.Prelude._hyg.3780
 Nat.le_trans
 Nat.le_step
 Nat.lt_trans
