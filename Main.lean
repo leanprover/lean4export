@@ -13,6 +13,7 @@ def main (args : List String) : IO UInt32 := do
   | .error msg => do
     IO.eprintln s!"{msg}\n\n{usage}\n"
     return 1
+
   | .ok opts => do
     if opts.printHelp then
       IO.eprintln usage
@@ -20,8 +21,6 @@ def main (args : List String) : IO UInt32 := do
 
     let env ← importModules (opts.modules.map ({ module := ·.name })) {}
     let constants := getRootConstants env opts
-
-    -- Dump selected constants and all dependencies
     M.run opts.toFlags env do
       initState env
       dumpMetadata
