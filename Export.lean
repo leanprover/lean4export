@@ -31,6 +31,7 @@ def Lean.KVMap.toJson (kvs: Lean.KVMap) : Json :=
 
 structure Flags where
   printHelp : Bool := false
+  allModuleTheorems : Bool := true
   exportMData : Bool := false
   exportUnsafe : Bool := false
 

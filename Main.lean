@@ -7,65 +7,57 @@ Whether to export all constants, all the constants in the specified modules
 -/
 inductive ConstantExportSetting where
   | all : ConstantExportSetting
-  | allInModules : ConstantExportSetting
   | specificConstants : List Name → ConstantExportSetting
 
+/--
+Command line options for lean4export
+-/
 structure Opts extends Flags where
   modules : Array Name
   constantExport : ConstantExportSetting
 
-def parseOpts : List String → Except String Opts := go {} #[] .none
+def parseOpts : List String → Except String Opts := go {} #[]
 where
-  go (flags : Flags) (modules : Array Name) (constantExport : Option ConstantExportSetting) : List String → Except String Opts
+  go (flags : Flags) (modules : Array Name) : List String → Except String Opts
     | "--" :: rest => do
-      unless constantExport = .none do
-        throw s!"Cannot describe individual constants using `--` in combination with --all-module-constants"
       let constants ← rest.mapM fun constant => do
         let .some name := Syntax.decodeNameLit ("`" ++ constant)
           | throw s!"Could not turn constant `{constant}` into an identifier"
         return name
       return ⟨flags, modules, .specificConstants constants⟩
-    | [] => .ok ⟨flags, modules, constantExport.getD .all⟩
-    | "-h" :: rest => go { flags with printHelp := true } modules constantExport rest
-    | "--help" :: rest => go { flags with printHelp := true } modules constantExport rest
-    | "--export-mdata" :: rest => go { flags with exportMData := true } modules constantExport rest
-    | "--export-unsafe" :: rest => go { flags with exportUnsafe := true } modules constantExport rest
-    | "-m" :: rest => do
-      unless constantExport = .none do
-        throw s!"Redundant or conflicting constant export settings"
-      go flags modules (.some .allInModules) rest
-    | "--all-module-constants" :: rest => do
-      unless constantExport = .none do
-        throw s!"Redundant or conflicting constant export settings"
-      go flags modules (.some .allInModules) rest
+    | [] =>
+      -- If `--all-module-theorems` is set, just include module theorems
+      if flags.allModuleTheorems then
+        .ok ⟨flags, modules, .specificConstants []⟩
+      else
+        .ok ⟨flags, modules, .all⟩
+    | "-h" :: rest => go { flags with printHelp := true } modules rest
+    | "--help" :: rest => go { flags with printHelp := true } modules rest
+    | "--export-mdata" :: rest => go { flags with exportMData := true } modules rest
+    | "--export-unsafe" :: rest => go { flags with exportUnsafe := true } modules rest
+    | "--all-module-theorems" :: rest => do
+      go { flags with allModuleTheorems := true } modules rest
     | mod :: rest => do
       let .some name := Syntax.decodeNameLit ("`" ++ mod)
         | throw s!"Could not turn module name `{mod}` to an identifier"
-      go flags (modules.push name) constantExport rest
+      go flags (modules.push name) rest
 
 def usage := "usage: lean4export <modules> [-h | --help]
                    [--export-mdata] [--export-unsafe]
-                   [-m | --all-module-constants | -- <constants>]"
+                   [--all-module-theorems] [-- <constants>]"
 
 /--
 Get all suitable constants defined in a module
 -/
-def pickConstants (flags : Flags) (env : Environment) (mod: Name) : Array Name :=
+def pickConstants (env : Environment) (mod: Name) : Array Name :=
   let moduleIdx := env.getModuleIdx? mod |>.get!
 
   -- Grab all constants from the module
   let moduleData := env.header.moduleData[moduleIdx]!
   moduleData.constants
-    |>.filterMap (fun const =>
-      -- include all non-internal constants AND constants that are non-internal but private
-      let constNameWithPrivateRemoved := const.name.components.filter (· != `_private)
-      if constNameWithPrivateRemoved.any (·.isInternal) then
-        .none
-      -- omit internal constants that are partial or unsafe
-      else if const.isUnsafe && not flags.exportUnsafe then
-        .none
-      else
-        .some const.name)
+    |>.filterMap fun
+      | .thmInfo thm => .some thm.name
+      | _ => .none
 
 
 def main (args : List String) : IO Unit := do
@@ -78,13 +70,30 @@ def main (args : List String) : IO Unit := do
     if flags.printHelp then
       IO.eprintln usage
       IO.Process.exit 0
+
     let env ← importModules (imports.map ({ module := · })) {}
+
+    -- Determine what to export from the environment based on command-line options
+    let moduleTheorems : NameSet :=
+      if flags.allModuleTheorems then
+        imports.foldl (init := NameSet.empty) fun set mod =>
+          -- Get module data from environment
+          let moduleIdx := env.getModuleIdx? mod |>.get!
+          let moduleData := env.header.moduleData[moduleIdx]!
+
+          -- Read all theorems (NOTE: includes private/internal theorems)
+          let moduleTheorems := moduleData.constants
+            |>.filterMap fun
+              | .thmInfo thm => .some thm.name
+              | _ => .none
+          moduleTheorems.foldl (init := set) NameSet.insert
+      else
+        {}
     let constants := match constants with
       | .all => env.constants.toList.map Prod.fst |>.filter (Name.isInternal · |> not)
-      | .allInModules => imports.foldl (init := NameSet.empty)
-          (fun set mod => pickConstants flags env mod |>.foldl (init := set) NameSet.insert)
-          |>.toList
-      | .specificConstants c => c
+      | .specificConstants c => c ++ moduleTheorems.toList
+
+    -- Dump selected constants and all dependencies
     M.run flags env do
       initState env
       dumpMetadata
