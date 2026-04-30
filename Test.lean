@@ -482,7 +482,7 @@ List.flatten.match_1
 List.append.match_1
 List.append
 List.flatten
-instDecidableEqList.match_1
+List.length.match_1
 List.map
 List.flatMap
 Char.val
@@ -521,16 +521,6 @@ Eq.casesOn
 HEq
 HEq.refl
 HEq.rec
-True
-True.intro
-True.rec
-Nat.beq.match_1
-Nat.beq
-_private.Init.Prelude.0.noConfusion_of_Nat.aux.match_1_1
-_private.Init.Prelude.0.noConfusion_of_Nat.aux
-congrArg
-noConfusion_of_Nat
-Bool.ctorIdx
 _private.Init.Prelude.0.Nat.le_of_ble_eq_true.match_1_1
 _private.Init.Prelude.0.Nat.zero_le.match_1_1
 Nat.zero_le
@@ -578,7 +568,8 @@ namedPattern
 Nat.mod.match_1
 Nat.decLt
 Nat.le.casesOn
-Nat.ctorIdx
+Nat.noConfusionType
+Nat.noConfusion
 Nat.div.go.match_1
 HSub
 HSub.mk
@@ -599,8 +590,9 @@ And.casesOn
 _private.Init.Prelude.0.Nat.div_rec_lemma.match_1_1
 _private.Init.Prelude.0.Nat.sub_lt.match_1_1
 _private.Init.Prelude.0.Nat.not_succ_le_self.match_1_1
-Nat.noConfusionType
-Nat.noConfusion
+_private.Init.Prelude.0.Nat.not_succ_le_zero.match_1_5
+_private.Init.Prelude.0.Nat.not_succ_le_zero.match_1_1
+_private.Init.Prelude.0.Nat.not_succ_le_zero.match_1_3
 Nat.not_succ_le_zero
 _private.Init.Prelude.0.Nat.pred_le_pred.match_1_1
 Nat.le_succ
@@ -613,6 +605,7 @@ Nat.le_refl
 _private.Init.Prelude.0.Nat.pred_le.match_1_1
 Nat.pred_le
 Nat.sub_le
+congrArg
 Nat.succ_sub_succ_eq_sub
 Nat.sub_lt
 Nat.div_rec_lemma
