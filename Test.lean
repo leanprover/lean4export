@@ -432,7 +432,7 @@ BitVec
 BitVec.ofFin
 BitVec.rec
 UInt32
-UInt32.ofBitVec
+UInt32.mk
 UInt32.rec
 Or
 Or.inl
@@ -508,7 +508,7 @@ Eq.symm
 letFun
 cast
 eq_of_heq
-Nat.succ_le_succ.match_1._@.Init.Prelude._hyg.4449
+Nat.succ_le_succ.match_1._@.Init.Prelude._hyg.4405
 HAdd
 HAdd.mk
 HAdd.rec
@@ -522,7 +522,7 @@ instAddNat
 Nat.succ_le_succ
 Nat.le_of_ble_eq_true
 absurd
-Nat.ble_eq_true_of_le.match_1._@.Init.Prelude._hyg.5754
+Nat.ble_eq_true_of_le.match_1._@.Init.Prelude._hyg.5710
 Nat.not_succ_le_zero.match_3
 Nat.ble_self_eq_true
 Nat.ble_succ_eq_true.match_1
@@ -536,11 +536,11 @@ instDecidableAnd.proof_1
 And.left
 instDecidableAnd.proof_2
 instDecidableAnd
-BitVec.ofNatLT
+BitVec.ofNatLt
 UInt32.size
 And.casesOn
 _private.Init.Prelude.0.isValidChar_UInt32.match_1
-Nat.le_trans.match_1._@.Init.Prelude._hyg.4616
+Nat.le_trans.match_1._@.Init.Prelude._hyg.4572
 Nat.le_trans
 Nat.le_step
 Nat.lt_trans
