@@ -220,7 +220,7 @@ where
     let charOfNat := ``Char.ofNat
     if (!(← get).visitedConstants.contains charOfNat) && ((← read).env.find? charOfNat).isSome
     then dumpConstant charOfNat
-    let stringMk := ``String.ofByteArray
+    let stringMk := ``String.mk
     if (!(← get).visitedConstants.contains stringMk) && ((← read).env.find? stringMk).isSome
     then dumpConstant stringMk
 
