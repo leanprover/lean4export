@@ -270,7 +270,7 @@ info: {"str":{"str":"Lean","pre":0},"in":1}
 Parser tests (we check that that it can be parsed and that the names are correct)
 -/
 
-meta def runParserTest (dump : M Unit) : MetaM Unit := do
+def runParserTest (dump : M Unit) : MetaM Unit := do
   let bufferRef ← IO.mkRef {data := .empty, pos := 0}
   let stream := .ofBuffer bufferRef
   IO.withStdout stream <| do
@@ -490,8 +490,8 @@ Eq.casesOn
 HEq
 HEq.refl
 HEq.rec
-_private.Init.Prelude.0.Nat.le_of_ble_eq_true.match_1_1
-_private.Init.Prelude.0.Nat.zero_le.match_1_1
+Nat.le_of_ble_eq_true.match_1_1
+Nat.zero_le.match_1_1
 Nat.zero_le
 Nat.le.below
 Nat.le.below.refl
@@ -500,9 +500,10 @@ Nat.le.below.rec
 Nat.le.brecOn
 Nat.le.below.casesOn
 Eq.symm
+letFun
 cast
 eq_of_heq
-_private.Init.Prelude.0.Nat.succ_le_succ.match_1_1._@.Init.Prelude._hyg.3630
+Nat.succ_le_succ.match_1_1._@.Init.Prelude._hyg.3635
 HAdd
 HAdd.mk
 HAdd.rec
@@ -516,10 +517,10 @@ instAddNat
 Nat.succ_le_succ
 Nat.le_of_ble_eq_true
 absurd
-_private.Init.Prelude.0.Nat.ble_eq_true_of_le.match_1_1._@.Init.Prelude._hyg.4248
-_private.Init.Prelude.0.Nat.ble_self_eq_true.match_1_1
+Nat.ble_eq_true_of_le.match_1_1._@.Init.Prelude._hyg.4257
+Nat.ble_self_eq_true.match_1_1
 Nat.ble_self_eq_true
-_private.Init.Prelude.0.Nat.ble_succ_eq_true.match_1_1
+Nat.ble_succ_eq_true.match_1_1
 Nat.ble_succ_eq_true
 Nat.ble_eq_true_of_le
 Nat.not_le_of_not_ble_eq_true
@@ -534,19 +535,18 @@ BitVec.ofNatLT
 UInt32.size
 And.casesOn
 _private.Init.Prelude.0.isValidChar_UInt32.match_1_1
-_private.Init.Prelude.0.Nat.le_trans.match_1_1._@.Init.Prelude._hyg.3719
+Nat.le_trans.match_1_1._@.Init.Prelude._hyg.3724
 Nat.le_trans
 Nat.le_step
 Nat.lt_trans
 Decidable.decide
-_private.Init.Prelude.0.of_decide_eq_true.match_1_1
-_private.Init.Prelude.0.ne_true_of_eq_false.match_1_1
+of_decide_eq_true.match_1_1
+ne_true_of_eq_false.match_1_1
 ne_true_of_eq_false
-_private.Init.Prelude.0.decide_eq_false.match_1_1
+decide_eq_false.match_1_1
 decide_eq_false
 of_decide_eq_true
 _private.Init.Prelude.0.isValidChar_UInt32
-Char.ofNatAux._private_1
 Char.ofNatAux
 Char.ofNat._proof_1
 Char.ofNat._proof_2

@@ -143,7 +143,7 @@ def removeMData (e : Expr) : M Expr := do
     -- (e.g., nanoda_lib) treat expressions as identical regardless of this optimization hint.
     -- Without normalization, the same expression can get different indices, causing parse errors.
     -- See: https://github.com/ammkrn/lean4export/commit/eb023e5
-    pure <| e.updateLet! (← removeMData d) (← removeMData v) (← removeMData b) false
+    pure <| e.updateLet! (← removeMData d) (← removeMData v) (← removeMData b)
   | .forallE _ d b _ =>
     pure <| e.updateForallE! (← removeMData d) (← removeMData b)
   | .proj _ _ e2 =>
