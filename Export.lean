@@ -220,9 +220,9 @@ where
     let charOfNat := ``Char.ofNat
     if (!(← get).visitedConstants.contains charOfNat) && ((← read).env.find? charOfNat).isSome
     then dumpConstant charOfNat
-    let stringOfList := ``String.ofList
-    if (!(← get).visitedConstants.contains stringOfList) && ((← read).env.find? stringOfList).isSome
-    then dumpConstant stringOfList
+    let stringMk := ``String.ofByteArray
+    if (!(← get).visitedConstants.contains stringMk) && ((← read).env.find? stringMk).isSome
+    then dumpConstant stringMk
 
 partial def dumpExpr (e : Expr) : M Nat := do
     let aux (e : Expr) : M Expr := do
@@ -318,7 +318,7 @@ partial def dumpConstant (c : Name) : M Unit := do
       modify fun st => { st with visitedConstants:= st.visitedConstants.insert indName }
       dumpDeps val.type
       if let .some names := (← get).recursorMap.get? baseIndVal.name
-      then recursorNames := recursorNames.union names
+      then recursorNames := names.foldl (init := recursorNames) (·.insert ·)
       else assert! ctorVals.size == 0
 
     /- We dump the constructor dependencies (which will not include the inductives in this block since we've

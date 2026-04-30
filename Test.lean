@@ -505,7 +505,7 @@ Bool
 Bool.false
 Bool.true
 Bool.rec
-Nat.ble.match_1
+Nat.beq.match_1
 Nat.ble
 DecidableEq
 Bool.casesOn
@@ -516,7 +516,6 @@ Eq.ndrec
 Bool.noConfusion
 Bool.decEq
 instDecidableEqBool
-False.elim
 Eq.casesOn
 HEq
 HEq.refl
@@ -567,6 +566,7 @@ instHMod
 namedPattern
 Nat.mod.match_1
 Nat.decLt
+False.elim
 Nat.le.casesOn
 Nat.noConfusionType
 Nat.noConfusion
@@ -594,6 +594,8 @@ _private.Init.Prelude.0.Nat.not_succ_le_zero.match_1_5
 _private.Init.Prelude.0.Nat.not_succ_le_zero.match_1_1
 _private.Init.Prelude.0.Nat.not_succ_le_zero.match_1_3
 Nat.not_succ_le_zero
+id
+Nat.succ.noConfusion
 _private.Init.Prelude.0.Nat.pred_le_pred.match_1_1
 Nat.le_succ
 Nat.pred_le_pred
@@ -626,7 +628,6 @@ _private.Init.Prelude.0.Nat.modCoreGo_lt.match_1_1
 Or.casesOn
 _private.Init.Prelude.0.Or.elim.match_1_1
 Or.elim
-id
 Or.resolve_right
 GE.ge
 _private.Init.Prelude.0.Nat.lt_or_ge.match_1_5
@@ -693,6 +694,7 @@ instDecidableAnd
 BitVec.ofNatLT
 UInt32.size
 _private.Init.Prelude.0.isValidChar_UInt32.match_1_1
+Nat.le_step
 Nat.lt_trans
 Decidable.decide
 _private.Init.Prelude.0.of_decide_eq_true.match_1_1
@@ -707,8 +709,6 @@ Char.ofNatAux
 Char.ofNat._proof_1
 Char.ofNat._proof_2
 Char.ofNat
-String.ofList._proof_1
-String.ofList
 literals
 -/
 #guard_msgs in
