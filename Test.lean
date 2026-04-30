@@ -299,7 +299,8 @@ List.rec
   dumpConstant `List
 
 /--
-info: Bool
+info: optParam
+Bool
 Bool.false
 Bool.true
 Bool.rec
@@ -508,7 +509,7 @@ Eq.symm
 letFun
 cast
 eq_of_heq
-Nat.succ_le_succ.match_1._@.Init.Prelude._hyg.4402
+Nat.succ_le_succ.match_1._@.Init.Prelude._hyg.4370
 HAdd
 HAdd.mk
 HAdd.rec
@@ -522,7 +523,7 @@ instAddNat
 Nat.succ_le_succ
 Nat.le_of_ble_eq_true
 absurd
-Nat.ble_eq_true_of_le.match_1._@.Init.Prelude._hyg.5707
+Nat.ble_eq_true_of_le.match_1._@.Init.Prelude._hyg.5675
 Nat.not_succ_le_zero.match_3
 Nat.ble_self_eq_true
 Nat.ble_succ_eq_true.match_1
@@ -540,7 +541,7 @@ BitVec.ofNatLt
 UInt32.size
 And.casesOn
 _private.Init.Prelude.0.isValidChar_UInt32.match_1
-Nat.le_trans.match_1._@.Init.Prelude._hyg.4569
+Nat.le_trans.match_1._@.Init.Prelude._hyg.4537
 Nat.le_trans
 Nat.le_step
 Nat.lt_trans
