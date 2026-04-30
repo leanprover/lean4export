@@ -63,10 +63,11 @@ def initState (env : Environment) (cliOptions : List String := []) : M Unit := d
   for (_, constInfo) in env.constants do
     if let .recInfo recVal := constInfo then
       for indName in recVal.all do
-        recursorMap := recursorMap.alter indName <|
-          fun
-          | none => some <| NameSet.empty.insert recVal.name
-          | some recNames => some <| recNames.insert recVal.name
+        -- XXX: nonlinearity but hopefully okay for initialization
+        if let some recNames := recursorMap.find? indName then
+          recursorMap := recursorMap.insert indName <| recNames.insert recVal.name
+        else
+          recursorMap := recursorMap.insert indName <| NameSet.empty.insert recVal.name
   modify fun st => { st with
     exportMData  := cliOptions.any  (· == "--export-mdata")
     exportUnsafe := cliOptions.any (· == "--export-unsafe")
@@ -317,8 +318,8 @@ partial def dumpConstant (c : Name) : M Unit := do
         | _ => panic! "Expected a `ConstantInfo.ctorInfo`."
       modify fun st => { st with visitedConstants:= st.visitedConstants.insert indName }
       dumpDeps val.type
-      if let .some names := (← get).recursorMap.get? baseIndVal.name
-      then recursorNames := names.foldl (init := recursorNames) (·.insert ·)
+      if let .some names := (← get).recursorMap.find? baseIndVal.name
+      then recursorNames := names.fold (init := recursorNames) (·.insert ·)
       else assert! ctorVals.size == 0
 
     /- We dump the constructor dependencies (which will not include the inductives in this block since we've

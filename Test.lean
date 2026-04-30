@@ -502,7 +502,7 @@ Nat.le.below.casesOn
 Eq.symm
 cast
 eq_of_heq
-_private.Init.Prelude.0.Nat.succ_le_succ.match_1_1._@.Init.Prelude._hyg.3691
+_private.Init.Prelude.0.Nat.succ_le_succ.match_1_1._@.Init.Prelude._hyg.3630
 HAdd
 HAdd.mk
 HAdd.rec
@@ -516,7 +516,7 @@ instAddNat
 Nat.succ_le_succ
 Nat.le_of_ble_eq_true
 absurd
-_private.Init.Prelude.0.Nat.ble_eq_true_of_le.match_1_1._@.Init.Prelude._hyg.4309
+_private.Init.Prelude.0.Nat.ble_eq_true_of_le.match_1_1._@.Init.Prelude._hyg.4248
 _private.Init.Prelude.0.Nat.ble_self_eq_true.match_1_1
 Nat.ble_self_eq_true
 _private.Init.Prelude.0.Nat.ble_succ_eq_true.match_1_1
@@ -534,7 +534,7 @@ BitVec.ofNatLT
 UInt32.size
 And.casesOn
 _private.Init.Prelude.0.isValidChar_UInt32.match_1_1
-_private.Init.Prelude.0.Nat.le_trans.match_1_1._@.Init.Prelude._hyg.3780
+_private.Init.Prelude.0.Nat.le_trans.match_1_1._@.Init.Prelude._hyg.3719
 Nat.le_trans
 Nat.le_step
 Nat.lt_trans

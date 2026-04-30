@@ -85,20 +85,20 @@ def addConst (name : Lean.Name) (d : Lean.ConstantInfo) : M Unit := do
     }
 
 @[inline]
-def parseJsonObj (line : String) : M (Std.TreeMap.Raw String Json) := do
+def parseJsonObj (line : String) : M (RBNode String (fun _ => Json)) := do
   let .ok (.obj obj) := Json.Parser.anyCore.run line | fail "Expected JSON object"
   return obj
 
 def parseNameStr (json : Json) : M Name := do
   let .obj data := json | fail s!"Name.str invalid"
-  let some (.num (preIdx : Nat)) := data["pre"]? | fail s!"Name.str invalid"
-  let some (.str str) := data["str"]? | fail s!"Name.str invalid"
+  let some (.num (preIdx : Nat)) := data.find compare "pre" | fail s!"Name.str invalid"
+  let some (.str str) := data.find compare "str" | fail s!"Name.str invalid"
   return .str (← getName preIdx) str
 
 def parseNameNum (json : Json) : M Name := do
   let .obj data := json | fail s!"Name.num invalid"
-  let some (.num (preIdx : Nat)) := data["pre"]? | fail s!"Name.str invalid"
-  let some (.num (i : Nat)) := data["i"]? | fail s!"Name.num invalid"
+  let some (.num (preIdx : Nat)) := data.find compare "pre" | fail s!"Name.str invalid"
+  let some (.num (i : Nat)) := data.find compare "i" | fail s!"Name.num invalid"
   return .num (← getName preIdx) i
 
 def parseLevelSucc (json : Json) : M Level := do
@@ -129,8 +129,8 @@ def parseExprSort (json : Json) : M Expr := do
 
 def parseExprConst (json : Json) : M Expr := do
   let .obj data := json | fail s!"Expr.const invalid"
-  let some (.num (declNameIdx : Nat)) := data["name"]? | fail s!"Expr.const invalid"
-  let some (.arr usIdxs) := data["us"]? | fail s!"Expr.const invalid"
+  let some (.num (declNameIdx : Nat)) := data.find compare "name" | fail s!"Expr.const invalid"
+  let some (.arr usIdxs) := data.find compare "us" | fail s!"Expr.const invalid"
 
   let declName ← getName declNameIdx
   let us ← usIdxs.mapM fun uIdx => do
@@ -141,8 +141,8 @@ def parseExprConst (json : Json) : M Expr := do
 
 def parseExprApp (json : Json) : M Expr := do
   let .obj data := json | fail s!"Expr.app invalid"
-  let some (.num (fnIdx : Nat)) := data["fn"]? | fail s!"Expr.app invalid"
-  let some (.num (argIdx : Nat)) := data["arg"]? | fail s!"Expr.app invalid"
+  let some (.num (fnIdx : Nat)) := data.find compare "fn" | fail s!"Expr.app invalid"
+  let some (.num (argIdx : Nat)) := data.find compare "arg" | fail s!"Expr.app invalid"
   let fn ← getExpr fnIdx
   let arg ← getExpr argIdx
 
@@ -158,10 +158,10 @@ def parseBinderInfo (info : String) : M BinderInfo :=
 
 def parseExprLam (json : Json) : M Expr := do
   let .obj data := json | fail s!"Expr.lam invalid"
-  let some (.num (binderNameIdx : Nat)) := data["name"]? | fail s!"Expr.lam invalid"
-  let some (.num (binderTypeIdx : Nat)) := data["type"]? | fail s!"Expr.lam invalid"
-  let some (.num (bodyIdx : Nat)) := data["body"]? | fail s!"Expr.lam invalid"
-  let some (.str binderInfoStr) := data["binderInfo"]? | fail s!"Expr.lam invalid"
+  let some (.num (binderNameIdx : Nat)) := data.find compare "name" | fail s!"Expr.lam invalid"
+  let some (.num (binderTypeIdx : Nat)) := data.find compare "type" | fail s!"Expr.lam invalid"
+  let some (.num (bodyIdx : Nat)) := data.find compare "body" | fail s!"Expr.lam invalid"
+  let some (.str binderInfoStr) := data.find compare "binderInfo" | fail s!"Expr.lam invalid"
 
   let binderName ← getName binderNameIdx
   let binderType ← getExpr binderTypeIdx
@@ -172,10 +172,10 @@ def parseExprLam (json : Json) : M Expr := do
 
 def parseExprForallE (json : Json) : M Expr := do
   let .obj data := json | fail s!"Expr.forallE invalid"
-  let some (.num (binderNameIdx : Nat)) := data["name"]? | fail s!"Expr.forallE invalid"
-  let some (.num (binderTypeIdx : Nat)) := data["type"]? | fail s!"Expr.forallE invalid"
-  let some (.num (bodyIdx : Nat)) := data["body"]? | fail s!"Expr.forallE invalid"
-  let some (.str binderInfoStr) := data["binderInfo"]? | fail s!"Expr.forallE invalid"
+  let some (.num (binderNameIdx : Nat)) := data.find compare "name" | fail s!"Expr.forallE invalid"
+  let some (.num (binderTypeIdx : Nat)) := data.find compare "type" | fail s!"Expr.forallE invalid"
+  let some (.num (bodyIdx : Nat)) := data.find compare "body" | fail s!"Expr.forallE invalid"
+  let some (.str binderInfoStr) := data.find compare "binderInfo" | fail s!"Expr.forallE invalid"
 
   let binderName ← getName binderNameIdx
   let binderType ← getExpr binderTypeIdx
@@ -186,11 +186,11 @@ def parseExprForallE (json : Json) : M Expr := do
 
 def parseExprLetE (json : Json) : M Expr := do
   let .obj data := json | fail s!"Expr.letE invalid"
-  let some (.num (binderNameIdx : Nat)) := data["name"]? | fail s!"Expr.letE invalid"
-  let some (.num (binderTypeIdx : Nat)) := data["type"]? | fail s!"Expr.letE invalid"
-  let some (.num (valueIdx : Nat)) := data["value"]? | fail s!"Expr.letE invalid"
-  let some (.num (bodyIdx : Nat)) := data["body"]? | fail s!"Expr.letE invalid"
-  let some (.bool nondep) := data["nondep"]? | fail s!"Expr.letE invalid"
+  let some (.num (binderNameIdx : Nat)) := data.find compare "name" | fail s!"Expr.letE invalid"
+  let some (.num (binderTypeIdx : Nat)) := data.find compare "type" | fail s!"Expr.letE invalid"
+  let some (.num (valueIdx : Nat)) := data.find compare "value" | fail s!"Expr.letE invalid"
+  let some (.num (bodyIdx : Nat)) := data.find compare "body" | fail s!"Expr.letE invalid"
+  let some (.bool nondep) := data.find compare "nondep" | fail s!"Expr.letE invalid"
 
   let binderName ← getName binderNameIdx
   let binderType ← getExpr binderTypeIdx
@@ -201,9 +201,9 @@ def parseExprLetE (json : Json) : M Expr := do
 
 def parseExprProj (json : Json) : M Expr := do
   let .obj data := json | fail s!"Expr.proj invalid"
-  let some (.num (typeNameIdx : Nat)) := data["typeName"]? | fail s!"Expr.proj invalid"
-  let some (.num (projIdx : Nat)) := data["idx"]? | fail s!"Expr.proj invalid"
-  let some (.num (structIdx : Nat)) := data["struct"]? | fail s!"Expr.proj invalid"
+  let some (.num (typeNameIdx : Nat)) := data.find compare "typeName" | fail s!"Expr.proj invalid"
+  let some (.num (projIdx : Nat)) := data.find compare "idx" | fail s!"Expr.proj invalid"
+  let some (.num (structIdx : Nat)) := data.find compare "struct" | fail s!"Expr.proj invalid"
 
   let typeName ← getName typeNameIdx
   let struct ← getExpr structIdx
@@ -222,8 +222,8 @@ def parseExprStrLit (json : Json) : M Expr := do
 
 def parseExprMdata (json : Json) : M Expr := do
   let .obj data := json | fail s!"Expr.mdata invalid"
-  let some (.num (exprIdx : Nat)) := data["expr"]? | fail s!"Expr.mdata invalid"
-  let some (.obj _dataObj) := data["data"]? | fail s!"Expr.mdata invalid"
+  let some (.num (exprIdx : Nat)) := data.find compare "expr" | fail s!"Expr.mdata invalid"
+  let some (.obj _dataObj) := data.find compare "data" | fail s!"Expr.mdata invalid"
   let expr ← getExpr exprIdx
 
   -- TODO: Unclear how to perfectly recover with the current output format
@@ -234,11 +234,11 @@ def getNameList (idxs : Array Json) : M (List Name) := do
     let (.num (idx : Nat)) := idx | fail s!"failed to convert to name idx"
     getName idx
 
-def parseAxiomInfo (data : Std.TreeMap.Raw String Json) : M Unit := do
-  let some (.num (nameIdx : Nat)) := data["name"]? | fail s!"axiomInfo invalid"
-  let some (.arr levelParamsIdxs) := data["levelParams"]? | fail s!"axiomInfo invalid"
-  let some (.num (typeIdx : Nat)) := data["type"]? | fail s!"axiomInfo invalid"
-  let some (.bool isUnsafe) := data["isUnsafe"]? | fail s!"axiomInfo invalid"
+def parseAxiomInfo (data : RBNode String (fun _ => Json)) : M Unit := do
+  let some (.num (nameIdx : Nat)) := data.find compare "name" | fail s!"axiomInfo invalid"
+  let some (.arr levelParamsIdxs) := data.find compare "levelParams" | fail s!"axiomInfo invalid"
+  let some (.num (typeIdx : Nat)) := data.find compare "type" | fail s!"axiomInfo invalid"
+  let some (.bool isUnsafe) := data.find compare "isUnsafe" | fail s!"axiomInfo invalid"
 
   let name ← getName nameIdx
   let levelParams ← getNameList levelParamsIdxs
@@ -246,14 +246,14 @@ def parseAxiomInfo (data : Std.TreeMap.Raw String Json) : M Unit := do
 
   addConst name <| .axiomInfo { name, levelParams, type, isUnsafe }
 
-def parseDefnInfo (data : Std.TreeMap.Raw String Json) : M Unit := do
-  let some (.num (nameIdx : Nat)) := data["name"]? | fail s!"defnInfo invalid"
-  let some (.arr levelParamsIdxs) := data["levelParams"]? | fail s!"defnInfo invalid"
-  let some (.num (typeIdx : Nat)) := data["type"]? | fail s!"defnInfo invalid"
-  let some (.num (valueIdx : Nat)) := data["value"]? | fail s!"defnInfo invalid"
-  let some hints := data["hints"]? | fail s!"defnInfo invalid"
-  let some (.str safetyStr) := data["safety"]? | fail s!"defnInfo invalid"
-  let some (.arr allIdxs) := data["all"]? | fail s!"defnInfo invalid"
+def parseDefnInfo (data : RBNode String (fun _ => Json)) : M Unit := do
+  let some (.num (nameIdx : Nat)) := data.find compare "name" | fail s!"defnInfo invalid"
+  let some (.arr levelParamsIdxs) := data.find compare "levelParams" | fail s!"defnInfo invalid"
+  let some (.num (typeIdx : Nat)) := data.find compare "type" | fail s!"defnInfo invalid"
+  let some (.num (valueIdx : Nat)) := data.find compare "value" | fail s!"defnInfo invalid"
+  let some hints := data.find compare "hints" | fail s!"defnInfo invalid"
+  let some (.str safetyStr) := data.find compare "safety" | fail s!"defnInfo invalid"
+  let some (.arr allIdxs) := data.find compare "all" | fail s!"defnInfo invalid"
 
   let name ← getName nameIdx
   let levelParams ← getNameList levelParamsIdxs
@@ -264,7 +264,7 @@ def parseDefnInfo (data : Std.TreeMap.Raw String Json) : M Unit := do
     | .str "opaque" => pure .opaque
     | .str "abbrev" => pure .abbrev
     | .obj obj =>
-      let some (.num (level : Nat)) := obj["regular"]? | fail s!"defnInfo invalid"
+      let some (.num (level : Nat)) := obj.find compare "regular" | fail s!"defnInfo invalid"
       pure <| .regular level.toUInt32
     | _ => fail s!"defnInfo invalid"
   let safety ←
@@ -277,12 +277,12 @@ def parseDefnInfo (data : Std.TreeMap.Raw String Json) : M Unit := do
 
   addConst name <| .defnInfo { name, levelParams, type, value, hints, safety, all }
 
-def parseThmInfo (data : Std.TreeMap.Raw String Json) : M Unit := do
-  let some (.num (nameIdx : Nat)) := data["name"]? | fail s!"thmInfo invalid"
-  let some (.arr levelParamsIdxs) := data["levelParams"]? | fail s!"thmInfo invalid"
-  let some (.num (typeIdx : Nat)) := data["type"]? | fail s!"thmInfo invalid"
-  let some (.num (valueIdx : Nat)) := data["value"]? | fail s!"thmInfo invalid"
-  let some (.arr allIdxs) := data["all"]? | fail s!"thmInfo invalid"
+def parseThmInfo (data : RBNode String (fun _ => Json)) : M Unit := do
+  let some (.num (nameIdx : Nat)) := data.find compare "name" | fail s!"thmInfo invalid"
+  let some (.arr levelParamsIdxs) := data.find compare "levelParams" | fail s!"thmInfo invalid"
+  let some (.num (typeIdx : Nat)) := data.find compare "type" | fail s!"thmInfo invalid"
+  let some (.num (valueIdx : Nat)) := data.find compare "value" | fail s!"thmInfo invalid"
+  let some (.arr allIdxs) := data.find compare "all" | fail s!"thmInfo invalid"
 
   let name ← getName nameIdx
   let levelParams ← getNameList levelParamsIdxs
@@ -292,14 +292,14 @@ def parseThmInfo (data : Std.TreeMap.Raw String Json) : M Unit := do
 
   addConst name <| .thmInfo { name, levelParams, type, value, all }
 
-def parseOpaqueInfo (data : Std.TreeMap.Raw String Json) : M Unit := do
-  let some (.num (nameIdx : Nat)) := data["name"]? | fail s!"opaqueInfo invalid"
-  let some (.arr levelParamsIdxs) := data["levelParams"]? | fail s!"opaqueInfo invalid"
-  let some (.num (typeIdx : Nat)) := data["type"]? | fail s!"opaqueInfo invalid"
-  let some (.num (valueIdx : Nat)) := data["value"]? | fail s!"opaqueInfo invalid"
+def parseOpaqueInfo (data : RBNode String (fun _ => Json)) : M Unit := do
+  let some (.num (nameIdx : Nat)) := data.find compare "name" | fail s!"opaqueInfo invalid"
+  let some (.arr levelParamsIdxs) := data.find compare "levelParams" | fail s!"opaqueInfo invalid"
+  let some (.num (typeIdx : Nat)) := data.find compare "type" | fail s!"opaqueInfo invalid"
+  let some (.num (valueIdx : Nat)) := data.find compare "value" | fail s!"opaqueInfo invalid"
   -- Work around until the exporter always includes isUnsafe
-  let (.bool isUnsafe) := data["isUnsafe"]?.getD (.bool false) | fail s!"axiomInfo invalid"
-  let some (.arr allIdxs) := data["all"]? | fail s!"opaqueInfo invalid"
+  let (.bool isUnsafe) := (data.find compare "isUnsafe").getD (.bool false) | fail s!"axiomInfo invalid"
+  let some (.arr allIdxs) := data.find compare "all" | fail s!"opaqueInfo invalid"
 
   let name ← getName nameIdx
   let levelParams ← getNameList levelParamsIdxs
@@ -309,11 +309,11 @@ def parseOpaqueInfo (data : Std.TreeMap.Raw String Json) : M Unit := do
 
   addConst name <| .opaqueInfo { name, levelParams, type, value, all, isUnsafe }
 
-def parseQuotInfo (data : Std.TreeMap.Raw String Json) : M Unit := do
-  let some (.num (nameIdx : Nat)) := data["name"]? | fail s!"quotInfo invalid"
-  let some (.arr levelParamsIdxs) := data["levelParams"]? | fail s!"quotInfo invalid"
-  let some (.num (typeIdx : Nat)) := data["type"]? | fail s!"quotInfo invalid"
-  let some (.str kindStr) := data["kind"]? | fail s!"quotInfo invalid"
+def parseQuotInfo (data : RBNode String (fun _ => Json)) : M Unit := do
+  let some (.num (nameIdx : Nat)) := data.find compare "name" | fail s!"quotInfo invalid"
+  let some (.arr levelParamsIdxs) := data.find compare "levelParams" | fail s!"quotInfo invalid"
+  let some (.num (typeIdx : Nat)) := data.find compare "type" | fail s!"quotInfo invalid"
+  let some (.str kindStr) := data.find compare "kind" | fail s!"quotInfo invalid"
 
   let name ← getName nameIdx
   let levelParams ← getNameList levelParamsIdxs
@@ -330,17 +330,17 @@ def parseQuotInfo (data : Std.TreeMap.Raw String Json) : M Unit := do
 
 def parseInductInfo (json : Json) : M Unit := do
   let .obj data := json | fail "inductInfo invalid: Expected JSON object"
-  let some (.num (nameIdx : Nat)) := data["name"]? | fail s!"inductInfo invalid"
-  let some (.arr levelParamsIdxs) := data["levelParams"]? | fail s!"inductInfo invalid"
-  let some (.num (typeIdx : Nat)) := data["type"]? | fail s!"inductInfo invalid"
-  let some (.num (numParams : Nat)) := data["numParams"]? | fail s!"inductInfo invalid"
-  let some (.num (numIndices : Nat)) := data["numIndices"]? | fail s!"inductInfo invalid"
-  let some (.arr allIdxs) := data["all"]? | fail s!"inductInfo invalid"
-  let some (.arr ctorsIdxs) := data["ctors"]? | fail s!"inductInfo invalid"
-  let some (.num (numNested : Nat)) := data["numNested"]? | fail s!"inductInfo invalid"
-  let some (.bool isRec) := data["isRec"]? | fail s!"inductInfo invalid"
-  let some (.bool isUnsafe) := data["isUnsafe"]? | fail s!"inductInfo invalid"
-  let some (.bool isReflexive) := data["isReflexive"]? | fail s!"inductInfo invalid"
+  let some (.num (nameIdx : Nat)) := data.find compare "name" | fail s!"inductInfo invalid"
+  let some (.arr levelParamsIdxs) := data.find compare "levelParams" | fail s!"inductInfo invalid"
+  let some (.num (typeIdx : Nat)) := data.find compare "type" | fail s!"inductInfo invalid"
+  let some (.num (numParams : Nat)) := data.find compare "numParams" | fail s!"inductInfo invalid"
+  let some (.num (numIndices : Nat)) := data.find compare "numIndices" | fail s!"inductInfo invalid"
+  let some (.arr allIdxs) := data.find compare "all" | fail s!"inductInfo invalid"
+  let some (.arr ctorsIdxs) := data.find compare "ctors" | fail s!"inductInfo invalid"
+  let some (.num (numNested : Nat)) := data.find compare "numNested" | fail s!"inductInfo invalid"
+  let some (.bool isRec) := data.find compare "isRec" | fail s!"inductInfo invalid"
+  let some (.bool isUnsafe) := data.find compare "isUnsafe" | fail s!"inductInfo invalid"
+  let some (.bool isReflexive) := data.find compare "isReflexive" | fail s!"inductInfo invalid"
 
   let name ← getName nameIdx
   let levelParams ← getNameList levelParamsIdxs
@@ -364,14 +364,14 @@ def parseInductInfo (json : Json) : M Unit := do
 
 def parseCtorInfo (json : Json) : M Unit := do
   let .obj data := json | fail s!"ctorInfo invalid"
-  let some (.num (nameIdx : Nat)) := data["name"]? | fail s!"ctorInfo invalid"
-  let some (.arr levelParamsIdxs) := data["levelParams"]? | fail s!"ctorInfo invalid"
-  let some (.num (typeIdx : Nat)) := data["type"]? | fail s!"ctorInfo invalid"
-  let some (.num (inductIdx : Nat)) := data["induct"]? | fail s!"ctorInfo invalid"
-  let some (.num (cidx : Nat)) := data["cidx"]? | fail s!"ctorInfo invalid"
-  let some (.num (numParams : Nat)) := data["numParams"]? | fail s!"ctorInfo invalid"
-  let some (.num (numFields : Nat)) := data["numFields"]? | fail s!"ctorInfo invalid"
-  let some (.bool isUnsafe) := data["isUnsafe"]? | fail s!"ctorInfo invalid"
+  let some (.num (nameIdx : Nat)) := data.find compare "name" | fail s!"ctorInfo invalid"
+  let some (.arr levelParamsIdxs) := data.find compare "levelParams" | fail s!"ctorInfo invalid"
+  let some (.num (typeIdx : Nat)) := data.find compare "type" | fail s!"ctorInfo invalid"
+  let some (.num (inductIdx : Nat)) := data.find compare "induct" | fail s!"ctorInfo invalid"
+  let some (.num (cidx : Nat)) := data.find compare "cidx" | fail s!"ctorInfo invalid"
+  let some (.num (numParams : Nat)) := data.find compare "numParams" | fail s!"ctorInfo invalid"
+  let some (.num (numFields : Nat)) := data.find compare "numFields" | fail s!"ctorInfo invalid"
+  let some (.bool isUnsafe) := data.find compare "isUnsafe" | fail s!"ctorInfo invalid"
 
   let name ← getName nameIdx
   let levelParams ← getNameList levelParamsIdxs
@@ -391,17 +391,17 @@ def parseCtorInfo (json : Json) : M Unit := do
 
 def parseRecInfo (json : Json) : M Unit := do
   let .obj data := json | fail s!"recInfo invalid"
-  let some (.num (nameIdx : Nat)) := data["name"]? | fail s!"recInfo invalid"
-  let some (.arr levelParamsIdxs) := data["levelParams"]? | fail s!"recInfo invalid"
-  let some (.num (typeIdx : Nat)) := data["type"]? | fail s!"recInfo invalid"
-  let some (.arr allIdxs) := data["all"]? | fail s!"recInfo invalid"
-  let some (.num (numParams : Nat)) := data["numParams"]? | fail s!"recInfo invalid"
-  let some (.num (numIndices : Nat)) := data["numIndices"]? | fail s!"recInfo invalid"
-  let some (.num (numMotives : Nat)) := data["numMotives"]? | fail s!"recInfo invalid"
-  let some (.num (numMinors : Nat)) := data["numMinors"]? | fail s!"recInfo invalid"
-  let some (.bool k) := data["k"]? | fail s!"recInfo invalid"
-  let some (.arr rules) := data["rules"]? | fail s!"recInfo invalid"
-  let some (.bool isUnsafe) := data["isUnsafe"]? | fail s!"recInfo invalid"
+  let some (.num (nameIdx : Nat)) := data.find compare "name" | fail s!"recInfo invalid"
+  let some (.arr levelParamsIdxs) := data.find compare "levelParams" | fail s!"recInfo invalid"
+  let some (.num (typeIdx : Nat)) := data.find compare "type" | fail s!"recInfo invalid"
+  let some (.arr allIdxs) := data.find compare "all" | fail s!"recInfo invalid"
+  let some (.num (numParams : Nat)) := data.find compare "numParams" | fail s!"recInfo invalid"
+  let some (.num (numIndices : Nat)) := data.find compare "numIndices" | fail s!"recInfo invalid"
+  let some (.num (numMotives : Nat)) := data.find compare "numMotives" | fail s!"recInfo invalid"
+  let some (.num (numMinors : Nat)) := data.find compare "numMinors" | fail s!"recInfo invalid"
+  let some (.bool k) := data.find compare "k" | fail s!"recInfo invalid"
+  let some (.arr rules) := data.find compare "rules" | fail s!"recInfo invalid"
+  let some (.bool isUnsafe) := data.find compare "isUnsafe" | fail s!"recInfo invalid"
 
   let name ← getName nameIdx
   let levelParams ← getNameList levelParamsIdxs
@@ -409,9 +409,9 @@ def parseRecInfo (json : Json) : M Unit := do
   let all ← getNameList allIdxs
   let rules ← rules.toList.mapM fun rule => do
     let .obj rule := rule | fail s!"recInfo invalid"
-    let some (.num (ctorIdx : Nat)) := rule["ctor"]? | fail s!"recInfo invalid"
-    let some (.num (nfields : Nat)) := rule["nfields"]? | fail s!"recInfo invalid"
-    let some (.num (rhsIdx : Nat)) := rule["rhs"]? | fail s!"recInfo invalid"
+    let some (.num (ctorIdx : Nat)) := rule.find compare "ctor" | fail s!"recInfo invalid"
+    let some (.num (nfields : Nat)) := rule.find compare "nfields" | fail s!"recInfo invalid"
+    let some (.num (rhsIdx : Nat)) := rule.find compare "rhs" | fail s!"recInfo invalid"
 
     let ctor ← getName ctorIdx
     let rhs ← getExpr rhsIdx
@@ -431,49 +431,49 @@ def parseRecInfo (json : Json) : M Unit := do
     isUnsafe,
   }
 
-def parseInductive (data : Std.TreeMap.Raw String Json) : M Unit := do
-  let some (.arr types) := data["types"]? | fail s!"Inductive invalid, no `types`"
-  let some (.arr ctors) := data["ctors"]? | fail s!"Inductive invalid, no `ctors`"
-  let some (.arr recs) := data["recs"]? | fail s!"Inductive invalid, no `recs`"
+def parseInductive (data : RBNode String (fun _ => Json)) : M Unit := do
+  let some (.arr types) := data.find compare "types" | fail s!"Inductive invalid, no `types`"
+  let some (.arr ctors) := data.find compare "ctors" | fail s!"Inductive invalid, no `ctors`"
+  let some (.arr recs) := data.find compare "recs" | fail s!"Inductive invalid, no `recs`"
   types.forM parseInductInfo
   ctors.forM parseCtorInfo
   recs.forM parseRecInfo
 
 def parseItem (line : String) : M Unit := do
   let obj ← parseJsonObj line
-  let kv := obj.toList
+  let kv := obj.toArray.toList
   -- Normalize key order...
   let kv := match kv with
-    | [x, y@("in", _)] => [y,x]
-    | [x, y@("ie", _)] => [y,x]
-    | [x, y@("il", _)] => [y,x]
+    | [x, y@⟨"in", _⟩] => [y,x]
+    | [x, y@⟨"ie", _⟩] => [y,x]
+    | [x, y@⟨"il", _⟩] => [y,x]
     | _ =>kv
   -- so that we can match on it easily
   match kv with
-  | [("in", .num (idx : Nat)),("str", data)] =>   addName idx <| ← parseNameStr data
-  | [("in", .num (idx : Nat)),("num", data)] =>   addName idx <| ← parseNameNum data
-  | [("il", .num (idx : Nat)),("succ", data)] =>  addLevel idx <| ← parseLevelSucc data
-  | [("il", .num (idx : Nat)),("max", data)] =>   addLevel idx <| ← parseLevelMax data
-  | [("il", .num (idx : Nat)),("imax", data)] =>  addLevel idx <| ← parseLevelImax data
-  | [("il", .num (idx : Nat)),("param", data)] => addLevel idx <| ← parseLevelParam data
-  | [("ie", .num (idx : Nat)),("bvar", data)] =>  addExpr idx <| ← parseExprBVar data
-  | [("ie", .num (idx : Nat)),("sort", data)] =>  addExpr idx <| ← parseExprSort data
-  | [("ie", .num (idx : Nat)),("const", data)] => addExpr idx <| ← parseExprConst data
-  | [("ie", .num (idx : Nat)),("app", data)] =>   addExpr idx <| ← parseExprApp data
-  | [("ie", .num (idx : Nat)),("lam", data)] =>   addExpr idx <| ← parseExprLam data
-  | [("ie", .num (idx : Nat)),("forallE", data)] =>addExpr idx <| ← parseExprForallE data
-  | [("ie", .num (idx : Nat)),("letE", data)] =>   addExpr idx <| ← parseExprLetE data
-  | [("ie", .num (idx : Nat)),("proj", data)] =>   addExpr idx <| ← parseExprProj data
-  | [("ie", .num (idx : Nat)),("natVal", data)] => addExpr idx <| ← parseExprNatLit data
-  | [("ie", .num (idx : Nat)),("strVal", data)] => addExpr idx <| ← parseExprStrLit data
-  | [("ie", .num (idx : Nat)),("mdata", data)] => addExpr idx <| ← parseExprMdata data
-  | [("axiom", .obj data)] => parseAxiomInfo data
-  | [("def", .obj data)] => parseDefnInfo data
-  | [("thm", .obj data)] => parseThmInfo data
-  | [("opaque", .obj data)] => parseOpaqueInfo data
-  | [("quot", .obj data)] => parseQuotInfo data
-  | [("inductive", .obj data)] => parseInductive data
-  | _ => fail s!"Unknown export object with keys {obj.keys}"
+  | [⟨"in", .num (idx : Nat)⟩,⟨"str", data⟩] =>   addName idx <| ← parseNameStr data
+  | [⟨"in", .num (idx : Nat)⟩,⟨"num", data⟩] =>   addName idx <| ← parseNameNum data
+  | [⟨"il", .num (idx : Nat)⟩,⟨"succ", data⟩] =>  addLevel idx <| ← parseLevelSucc data
+  | [⟨"il", .num (idx : Nat)⟩,⟨"max", data⟩] =>   addLevel idx <| ← parseLevelMax data
+  | [⟨"il", .num (idx : Nat)⟩,⟨"imax", data⟩] =>  addLevel idx <| ← parseLevelImax data
+  | [⟨"il", .num (idx : Nat)⟩,⟨"param", data⟩] => addLevel idx <| ← parseLevelParam data
+  | [⟨"ie", .num (idx : Nat)⟩,⟨"bvar", data⟩] =>  addExpr idx <| ← parseExprBVar data
+  | [⟨"ie", .num (idx : Nat)⟩,⟨"sort", data⟩] =>  addExpr idx <| ← parseExprSort data
+  | [⟨"ie", .num (idx : Nat)⟩,⟨"const", data⟩] => addExpr idx <| ← parseExprConst data
+  | [⟨"ie", .num (idx : Nat)⟩,⟨"app", data⟩] =>   addExpr idx <| ← parseExprApp data
+  | [⟨"ie", .num (idx : Nat)⟩,⟨"lam", data⟩] =>   addExpr idx <| ← parseExprLam data
+  | [⟨"ie", .num (idx : Nat)⟩,⟨"forallE", data⟩] =>addExpr idx <| ← parseExprForallE data
+  | [⟨"ie", .num (idx : Nat)⟩,⟨"letE", data⟩] =>   addExpr idx <| ← parseExprLetE data
+  | [⟨"ie", .num (idx : Nat)⟩,⟨"proj", data⟩] =>   addExpr idx <| ← parseExprProj data
+  | [⟨"ie", .num (idx : Nat)⟩,⟨"natVal", data⟩] => addExpr idx <| ← parseExprNatLit data
+  | [⟨"ie", .num (idx : Nat)⟩,⟨"strVal", data⟩] => addExpr idx <| ← parseExprStrLit data
+  | [⟨"ie", .num (idx : Nat)⟩,⟨"mdata", data⟩] => addExpr idx <| ← parseExprMdata data
+  | [⟨"axiom", .obj data⟩] => parseAxiomInfo data
+  | [⟨"def", .obj data⟩] => parseDefnInfo data
+  | [⟨"thm", .obj data⟩] => parseThmInfo data
+  | [⟨"opaque", .obj data⟩] => parseOpaqueInfo data
+  | [⟨"quot", .obj data⟩] => parseQuotInfo data
+  | [⟨"inductive", .obj data⟩] => parseInductive data
+  | _ => fail s!"Unknown export object with keys: {obj.toArray.map (·.fst)}"
 
 partial def parseItems : M Unit :=
   go
