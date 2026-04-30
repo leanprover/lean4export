@@ -52,8 +52,8 @@ public def LeanExportOpts.shouldExportEverything (opts : LeanExportOpts) : Bool 
   !opts.printHelp && opts.constants.length = 0 && opts.modules.all (not ·.includeAllTheorems)
 
 /--
-From a command line configuration, get the root set of constants that the
-export must support.
+From a command line configuration, gets the root set of constants that the
+exported environment must support.
 -/
 public def getRootConstants (env : Environment) (opts : LeanExportOpts) : List Name :=
   if opts.shouldExportEverything then
