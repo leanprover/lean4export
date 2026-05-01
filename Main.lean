@@ -5,7 +5,7 @@ open Lean
 def usage := "Usage:
   lean4export (-h | --help)
   lean4export [--export-mdata] [--export-unsafe]
-              [MODULE_NAME]... [(--all-theorems MODULE_NAME)...]
+              [MODULE_NAME...] [(--all-theorems MODULE_NAME)...]
               [-- CONSTANT...]"
 
 def main (args : List String) : IO UInt32 := do
@@ -21,7 +21,16 @@ def main (args : List String) : IO UInt32 := do
       return 0
 
     let env ← importModules (opts.modules.map ({ module := ·.name })) {}
+    let missingConstants ← opts.constants.filterM fun name => do
+      if env.constants.contains name then
+        return false
+      IO.eprintln s!"Required constant {name} not found in environment"
+      return true
+    if missingConstants.length > 0 then
+      return 1
+
     let constants := getRootConstants env opts
+
     M.run opts.toFlags env do
       initState env
       dumpMetadata
