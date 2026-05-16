@@ -232,7 +232,7 @@ partial def dumpExpr (e : Expr) : M Nat := do
 
 partial def dumpConstant (c : Name) : M Unit := do
   let some declar := (← read).env.find? c
-    | panic! s!"Constant {c} not found in environment."
+    | return
   if (declar.isUnsafe && !(← get).exportUnsafe) || (← get).visitedConstants.contains c then
     return
   modify fun st => { st with visitedConstants := st.visitedConstants.insert c }
@@ -291,7 +291,7 @@ partial def dumpConstant (c : Name) : M Unit := do
     dumpConstant ``Eq
     for c in [`Quot, ``Quot.mk, ``Quot.lift, ``Quot.ind] do
       let some (.quotInfo val) := (← read).env.find? c
-        | panic! s!"Constant {c} not found in environment."
+        | return
       modify fun st => { st with visitedConstants := st.visitedConstants.insert c }
       dumpObj [
         ("quot", .mkObj [
