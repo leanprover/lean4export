@@ -40,6 +40,7 @@ structure State where
   noMDataExprs : HashMap Expr Expr := HashMap.emptyWithCapacity 100000
   exportMData : Bool := false
   exportUnsafe : Bool := false
+  ignoreMissing : Bool := false
   /-- Maps the name of an inductive type to a list of names of corresponding recursors.
   This is used to facilitate exporting of related inductives, constructors, and recursors as a unit. -/
   recursorMap : NameMap NameSet := {}
@@ -68,8 +69,9 @@ def initState (env : Environment) (cliOptions : List String := []) : M Unit := d
           | none => some <| NameSet.empty.insert recVal.name
           | some recNames => some <| recNames.insert recVal.name
   modify fun st => { st with
-    exportMData  := cliOptions.any  (· == "--export-mdata")
-    exportUnsafe := cliOptions.any (· == "--export-unsafe")
+    exportMData   := cliOptions.any (· == "--export-mdata")
+    exportUnsafe  := cliOptions.any (· == "--export-unsafe")
+    ignoreMissing := cliOptions.any (· == "--ignore-missing")
     recursorMap
   }
 
@@ -232,7 +234,7 @@ partial def dumpExpr (e : Expr) : M Nat := do
 
 partial def dumpConstant (c : Name) : M Unit := do
   let some declar := (← read).env.find? c
-    | return
+    | if (← get).ignoreMissing then return else panic! s!"Constant {c} not found in environment."
   if (declar.isUnsafe && !(← get).exportUnsafe) || (← get).visitedConstants.contains c then
     return
   modify fun st => { st with visitedConstants := st.visitedConstants.insert c }
@@ -291,7 +293,7 @@ partial def dumpConstant (c : Name) : M Unit := do
     dumpConstant ``Eq
     for c in [`Quot, ``Quot.mk, ``Quot.lift, ``Quot.ind] do
       let some (.quotInfo val) := (← read).env.find? c
-        | return
+        | if (← get).ignoreMissing then return else panic! s!"Constant {c} not found in environment."
       modify fun st => { st with visitedConstants := st.visitedConstants.insert c }
       dumpObj [
         ("quot", .mkObj [

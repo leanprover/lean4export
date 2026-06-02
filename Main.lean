@@ -15,4 +15,7 @@ def main (args : List String) : IO Unit := do
     dumpMetadata
     for c in constants do
       modify (fun st => { st with noMDataExprs := {} })
-      try dumpConstant c catch _ => pure ()
+      if (← get).ignoreMissing then
+        try dumpConstant c catch _ => pure ()
+      else
+        dumpConstant c
