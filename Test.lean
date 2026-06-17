@@ -658,8 +658,8 @@ _private.Init.Prelude.0.Nat.lt_or_ge.match_1_5
 _private.Init.Prelude.0.Nat.lt_or_ge.match_1_3
 Nat.le_succ_of_le
 _private.Init.Prelude.0.Nat.lt_or_ge.match_1_1
-Nat.eq_or_lt_of_le.match_3
-Nat.eq_or_lt_of_le.match_1
+_private.Init.Prelude.0.Nat.eq_or_lt_of_le.match_1_3
+_private.Init.Prelude.0.Nat.eq_or_lt_of_le.match_1_1
 Nat.eq_or_lt_of_le._f
 Nat.eq_or_lt_of_le
 Nat.lt_or_ge._f
