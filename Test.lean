@@ -725,8 +725,8 @@ _private.Init.Prelude.0.isValidChar_UInt32.match_1_1
 Nat.lt_trans
 Decidable.decide
 _private.Init.Prelude.0.of_decide_eq_true.match_1_1
-_private.Init.Prelude.0.ne_true_of_eq_false.match_1_1
-ne_true_of_eq_false
+_private.Init.Prelude.0.Bool.ne_true_of_eq_false.match_1_1
+Bool.ne_true_of_eq_false
 _private.Init.Prelude.0.decide_eq_false.match_1_1
 decide_eq_false
 of_decide_eq_true
