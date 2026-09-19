@@ -4,6 +4,30 @@ import Std.Data.HashMap.Basic
 open Lean
 open Std (HashMap)
 
+/-! Decimal conversion of huge naturals. `Nat.repr` peels one digit at a time with a division of the
+whole number, which is quadratic and stalls for literals with millions of digits. This splits by
+10^(18*2^k) instead, so GMP's sub-quadratic division does the work. Output is identical to `Nat.repr`. -/
+partial def natToDecStrGo (pows : Array Nat) (k : Nat) (n : Nat) (pad : Bool) : String :=
+  if k == 0 then
+    let s := toString n
+    if pad then "".pushn '0' (18 - s.length) ++ s else s
+  else
+    let p := pows[k - 1]!
+    let q := n / p
+    let r := n % p
+    if !pad && q == 0 then natToDecStrGo pows (k - 1) r false
+    else natToDecStrGo pows (k - 1) q pad ++ natToDecStrGo pows (k - 1) r true
+
+def natToDecStr (n : Nat) : String :=
+  if n < 1000000000000000000 then toString n
+  else
+    let pows := Id.run do
+      let mut ps : Array Nat := #[1000000000000000000]
+      while ps.back! <= n do
+        ps := ps.push (ps.back! * ps.back!)
+      return ps
+    natToDecStrGo pows (pows.size - 1) n false
+
 def Lean.BinderInfo.toJson : BinderInfo → Json
   | .default => "default"
   | .implicit => "implicit"
@@ -166,7 +190,7 @@ partial def dumpExprAux (e : Expr) : M Nat := do
         ])
       ]
     | .bvar i => return .mkObj [("bvar", i)]
-    | .lit (.natVal i) => dumpNatDeps; return .mkObj [("natVal", s!"{i}")]
+    | .lit (.natVal i) => dumpNatDeps; return .mkObj [("natVal", natToDecStr i)]
     | .lit (.strVal s) => dumpStrDeps; return .mkObj [("strVal", s)]
     | .sort l => return .mkObj [("sort", ← dumpLevel l)]
     | .const n us => return .mkObj [
