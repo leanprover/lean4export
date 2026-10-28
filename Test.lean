@@ -70,6 +70,22 @@ info: {"in":1,"str":{"pre":0,"str":"Prod"}}
 #guard_msgs in
 #eval run <| dumpExpr (.proj `Prod 1 (.bvar 0))
 
+/--
+info:
+{"in":1,"str":{"pre":0,"str":"x"}}
+{"ie":0,"sort":0}
+{"bvar":0,"ie":1}
+{"ie":2,"lam":{"binderInfo":"default","body":1,"name":1,"type":0}}
+{"in":2,"str":{"pre":0,"str":"y"}}
+{"ie":3,"lam":{"binderInfo":"implicit","body":1,"name":2,"type":0}}
+-/
+#guard_msgs in
+#eval runEmpty <| do
+  let e1 := .lam `x (.sort .zero) (.bvar 0) .default
+  let e2 := .lam `y (.sort .zero) (.bvar 0) .implicit
+  let _ ← dumpExpr e1
+  let _ ← dumpExpr e2
+
 /-- info: {"ie":0,"natVal":"100000000000000023456789"}
 -/
 #guard_msgs in

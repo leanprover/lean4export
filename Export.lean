@@ -32,10 +32,28 @@ def Lean.KVMap.toJson (kvs: Lean.KVMap) : Json :=
 structure Context where
   env : Environment
 
+/--
+A wrapper around `Expr` whose `BEq` uses structural equality. This keeps
+expressions that differ only in binder names or binder info distinct in
+`visitedExprs`, so an export does not depend on which declarations were
+exported before it.
+-/
+structure ExprKey where
+  expr : Expr
+  deriving Inhabited
+
+instance : BEq ExprKey where
+  beq a b := a.expr.equal b.expr
+
+instance : Hashable ExprKey where
+  -- `Expr.hash` ignores binder names, so it is compatible with the finer
+  -- `Expr.equal` relation used by `BEq`.
+  hash a := hash a.expr
+
 structure State where
   visitedNames : HashMap Name Nat := HashMap.emptyWithCapacity 200000 |>.insert .anonymous 0
   visitedLevels : HashMap Level Nat := HashMap.emptyWithCapacity 1000 |>.insert .zero 0
-  visitedExprs : HashMap Expr Nat := HashMap.emptyWithCapacity 10000000
+  visitedExprs : HashMap ExprKey Nat := HashMap.emptyWithCapacity 10000000
   visitedConstants : NameHashSet := {}
   noMDataExprs : HashMap Expr Expr := HashMap.emptyWithCapacity 100000
   exportMData : Bool := false
@@ -155,7 +173,7 @@ def removeMData (e : Expr) : M Expr := do
 mutual
 
 partial def dumpExprAux (e : Expr) : M Nat := do
-  getIdx e "ie" (·.visitedExprs) ({ · with visitedExprs := · }) do
+  getIdx (ExprKey.mk e) "ie" (·.visitedExprs) ({ · with visitedExprs := · }) do
     match e with
     | .fvar .. | .mvar .. => panic! "cannot export free variables or metavariables"
     | .mdata a e' =>
