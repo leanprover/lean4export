@@ -1,5 +1,6 @@
 import Lean
 import Std.Data.HashMap.Basic
+import Export.IndexSet
 
 open Lean
 open Std (HashMap)
@@ -33,9 +34,9 @@ structure Context where
   env : Environment
 
 structure State where
-  visitedNames : HashMap Name Nat := HashMap.emptyWithCapacity 200000 |>.insert .anonymous 0
-  visitedLevels : HashMap Level Nat := HashMap.emptyWithCapacity 1000 |>.insert .zero 0
-  visitedExprs : HashMap Expr Nat := HashMap.emptyWithCapacity 10000000
+  visitedNames : Export.IndexSet Name := (Export.IndexSet.empty).push .anonymous
+  visitedLevels : Export.IndexSet Level := (Export.IndexSet.empty).push .zero
+  visitedExprs : Export.IndexSet Expr := {}
   visitedConstants : NameHashSet := {}
   noMDataExprs : HashMap Expr Expr := HashMap.emptyWithCapacity 100000
   exportMData : Bool := false
@@ -81,15 +82,17 @@ IFF it's been seen before, return its index within the export file
 IFF it has not been seen before, add it to the cache, print it into the export, and return its cache index.
 -/
 @[inline]
-def getIdx [Hashable α] [BEq α] (x : α) (namespaced: String) (getM : State → HashMap α Nat) (setM : State → HashMap α Nat → State) (rec : M Json) : M Nat := do
+def getIdx [Hashable α] [BEq α] [Inhabited α] (x : α) (namespaced: String) (getM : State → Export.IndexSet α) (setM : State → Export.IndexSet α → State) (rec : M Json) : M Nat := do
   let m ← getM <$> get
-  if let some idx := m[x]? then
+  if let some idx := m.find? x then
     return idx
   let s ← rec
   let m ← getM <$> get
   let idx := m.size
+  if idx ≥ Export.IndexSet.maxSize then
+    throw <| .userError s!"cannot export more than {Export.IndexSet.maxSize} distinct objects of one kind"
   IO.println (s.setObjVal! namespaced idx).compress
-  modify fun st => setM st ((getM st).insert x idx)
+  modify fun st => setM st ((getM st).push x)
   return idx
 
 def dumpName (n : Name) : M Nat := getIdx n "in" (·.visitedNames) ({ · with visitedNames := · }) do

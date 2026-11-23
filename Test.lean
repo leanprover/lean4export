@@ -747,3 +747,110 @@ literals
 #guard_msgs in
 #eval runParserTest do
   dumpConstant ``literals
+
+/-!
+`Export.IndexSet` against a `Std.HashMap α Nat` updated with `m.insert x m.size`: the indices and
+lookups must agree. The hash of `Key` makes keys collide, makes probe sequences wrap around the end
+of the table and sets the high bits of the hash; small chunks make the elements span many chunks,
+and the inserts cross several resizes.
+-/
+
+namespace IndexSetTest
+
+structure Key where
+  n : Nat
+  deriving BEq, Inhabited
+
+instance : Hashable Key where
+  hash k :=
+    if k.n % 3 == 0 then 0xFFFF
+    else if k.n % 3 == 1 then (k.n % 5).toUInt64
+    else 0xFFFFFFFF00000000 + (k.n % 7).toUInt64
+
+def agrees {α} [BEq α] [Hashable α] [Inhabited α] (xs : List α) (chunkBits : Nat) : Bool := Id.run do
+  let mut s : Export.IndexSet α := .empty chunkBits
+  let mut m : Std.HashMap α Nat := {}
+  for x in xs do
+    if s.find? x != m[x]? then
+      return false
+    if m[x]?.isNone then
+      m := m.insert x m.size
+      s := s.push x
+  return s.size == m.size && (List.range s.size).all fun i => m[s.get! i]? == some i
+
+/-- info: true -/
+#guard_msgs in
+#eval agrees ((List.range 3000).map fun i => Key.mk (i * 7919 % 1000)) 2
+
+/-- info: true -/
+#guard_msgs in
+#eval agrees ((List.range 50000).map fun i => i * 7919 % 20011) 3
+
+/-- info: true -/
+#guard_msgs in
+#eval agrees ((List.range 20000).map fun i => Name.mkNum `x (i * 7919 % 5003)) 20
+
+/-- Pushing an element that is already present appends it again; `find?` keeps the first index. -/
+def duplicatePush : Bool := Id.run do
+  let mut s : Export.IndexSet Nat := .empty 1
+  s := s.push 7
+  s := s.push 8
+  s := s.push 7
+  for i in [100:140] do
+    s := s.push i
+  return s.size == 43 && s.find? 7 == some 0 && s.find? 8 == some 1 && s.get! 2 == 7 &&
+    s.find? 139 == some 42
+
+/-- info: true -/
+#guard_msgs in
+#eval duplicatePush
+
+end IndexSetTest
+
+/-!
+Exporting a string literal first exports `Char.ofNat` and `String.ofList`. If one of them contains
+the same literal, the literal is exported again while its first export is still in progress. That
+cannot happen with `Init`, but it can with a custom prelude. No index may be bound twice: the
+literal is written a second time under its own index (`"ie":5`), and the application gets the next
+one (`"ie":6`).
+-/
+
+def reentrantEnv : IO Environment := do
+  let str : Expr := .const `String []
+  let lit : Expr := .lit (.strVal "x")
+  let decls : List Declaration := [
+    .axiomDecl { name := `String, levelParams := [], type := .sort 1, isUnsafe := false },
+    .axiomDecl { name := `f, levelParams := [], type := .forallE `a str str .default, isUnsafe := false },
+    .defnDecl { name := ``Char.ofNat, levelParams := [], type := str, value := lit, hints := .opaque, safety := .safe },
+    .defnDecl { name := `root, levelParams := [], type := str, value := .app (.const `f []) lit, hints := .opaque, safety := .safe }]
+  decls.foldlM (init := ← mkEmptyEnvironment) fun env d =>
+    match env.addDeclCore 0 0 d none (doCheck := false) with
+    | .ok env => pure env
+    | .error _ => throw <| .userError s!"cannot add {d.getNames}"
+
+/--
+info: {"in":1,"str":{"pre":0,"str":"String"}}
+{"il":1,"succ":0}
+{"ie":0,"sort":1}
+{"axiom":{"isUnsafe":false,"levelParams":[],"name":1,"type":0}}
+{"in":2,"str":{"pre":0,"str":"f"}}
+{"in":3,"str":{"pre":0,"str":"a"}}
+{"const":{"name":1,"us":[]},"ie":1}
+{"forallE":{"binderInfo":"default","body":1,"name":3,"type":1},"ie":2}
+{"axiom":{"isUnsafe":false,"levelParams":[],"name":2,"type":2}}
+{"in":4,"str":{"pre":0,"str":"root"}}
+{"const":{"name":2,"us":[]},"ie":3}
+{"in":5,"str":{"pre":0,"str":"Char"}}
+{"in":6,"str":{"pre":5,"str":"ofNat"}}
+{"ie":4,"strVal":"x"}
+{"def":{"all":[6],"hints":"opaque","levelParams":[],"name":6,"safety":"safe","type":1,"value":4}}
+{"ie":5,"strVal":"x"}
+{"app":{"arg":5,"fn":3},"ie":6}
+{"def":{"all":[4],"hints":"opaque","levelParams":[],"name":4,"safety":"safe","type":1,"value":6}}
+-/
+#guard_msgs in
+#eval show IO Unit from do
+  let env ← reentrantEnv
+  M.run env do
+    initState env
+    dumpConstant `root
