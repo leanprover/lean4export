@@ -1,5 +1,6 @@
 import Lean
 import Std.Data.HashMap.Basic
+import Export.IndexSet
 
 open Lean
 open Std (HashMap)
@@ -33,24 +34,23 @@ structure Context where
   env : Environment
 
 structure State where
-  visitedNames : HashMap Name Nat := HashMap.emptyWithCapacity 200000 |>.insert .anonymous 0
-  visitedLevels : HashMap Level Nat := HashMap.emptyWithCapacity 1000 |>.insert .zero 0
-  visitedExprs : HashMap Expr Nat := HashMap.emptyWithCapacity 10000000
+  visitedNames : Export.IndexSet Name := (Export.IndexSet.empty).push .anonymous
+  visitedLevels : Export.IndexSet Level := (Export.IndexSet.empty).push .zero
+  visitedExprs : Export.IndexSet Expr := {}
   visitedConstants : NameHashSet := {}
   noMDataExprs : HashMap Expr Expr := HashMap.emptyWithCapacity 100000
   exportMData : Bool := false
   exportUnsafe : Bool := false
+  /-- Format and write output lines on worker threads, in order. `--serial-output` turns it off. -/
+  parallelOutput : Bool := true
+  outPending : Array Json := #[]
+  outInflight : Array (Task String) := #[]
   ignoreMissing : Bool := false
   /-- Maps the name of an inductive type to a list of names of corresponding recursors.
   This is used to facilitate exporting of related inductives, constructors, and recursors as a unit. -/
   recursorMap : NameMap NameSet := {}
 
 abbrev M := ReaderT Context <| StateT State IO
-
-def M.run (env : Environment) (act : M α) : IO α :=
-  StateT.run' (s := {}) do
-    ReaderT.run (r := { env }) do
-      act
 
 /--
 Initialize the exporter state from an environment and cli options.
@@ -71,9 +71,55 @@ def initState (env : Environment) (cliOptions : List String := []) : M Unit := d
   modify fun st => { st with
     exportMData   := cliOptions.any (· == "--export-mdata")
     exportUnsafe  := cliOptions.any (· == "--export-unsafe")
+    parallelOutput := !cliOptions.any (· == "--serial-output")
     ignoreMissing := cliOptions.any (· == "--ignore-missing")
     recursorMap
   }
+
+/-- Serialize a batch of lines. Pure, so it can run on any thread. -/
+def formatBatch (b : Array Json) : String :=
+  b.foldl (init := "") fun acc j => (acc ++ j.compress).push '\n'
+
+def Export.outBatchSize : Nat := 4096
+def Export.outMaxInflight : Nat := 64
+
+/-- Write the oldest in-flight batch to stdout. Batches are written strictly in order. -/
+def writeOldest : M Unit := do
+  let st ← get
+  if h : 0 < st.outInflight.size then
+    let t := st.outInflight[0]
+    set { st with outInflight := st.outInflight.eraseIdx 0 }
+    (← IO.getStdout).putStr t.get
+
+def spawnPending : M Unit := do
+  let st ← get
+  let b := st.outPending
+  if b.isEmpty then return
+  set { st with outPending := #[], outInflight := st.outInflight.push (Task.spawn fun _ => formatBatch b) }
+  while (← get).outInflight.size > Export.outMaxInflight do
+    writeOldest
+
+/-- Output one NDJSON line. In order with every other call. -/
+def emit (j : Json) : M Unit := do
+  if !(← get).parallelOutput then
+    IO.println j.compress
+    return
+  modify fun st => { st with outPending := st.outPending.push j }
+  if (← get).outPending.size ≥ Export.outBatchSize then spawnPending
+
+/-- Write everything still queued. Call once at the end. -/
+def finishOutput : M Unit := do
+  spawnPending
+  while !(← get).outInflight.isEmpty do
+    writeOldest
+
+/-- Run an exporter action; all queued output is written before it returns. -/
+def M.run (env : Environment) (act : M α) : IO α :=
+  StateT.run' (s := {}) do
+    ReaderT.run (r := { env }) do
+      let a ← act
+      finishOutput
+      return a
 
 /--
 For a given primitive (name, level, expr) to be exported:
@@ -81,15 +127,17 @@ IFF it's been seen before, return its index within the export file
 IFF it has not been seen before, add it to the cache, print it into the export, and return its cache index.
 -/
 @[inline]
-def getIdx [Hashable α] [BEq α] (x : α) (namespaced: String) (getM : State → HashMap α Nat) (setM : State → HashMap α Nat → State) (rec : M Json) : M Nat := do
+def getIdx [Hashable α] [BEq α] [Inhabited α] (x : α) (namespaced: String) (getM : State → Export.IndexSet α) (setM : State → Export.IndexSet α → State) (rec : M Json) : M Nat := do
   let m ← getM <$> get
-  if let some idx := m[x]? then
+  if let some idx := m.find? x then
     return idx
   let s ← rec
   let m ← getM <$> get
   let idx := m.size
-  IO.println (s.setObjVal! namespaced idx).compress
-  modify fun st => setM st ((getM st).insert x idx)
+  if idx ≥ Export.IndexSet.maxSize then
+    throw <| .userError s!"cannot export more than {Export.IndexSet.maxSize} distinct objects of one kind"
+  emit (s.setObjVal! namespaced idx)
+  modify fun st => setM st ((getM st).push x)
   return idx
 
 def dumpName (n : Name) : M Nat := getIdx n "in" (·.visitedNames) ({ · with visitedNames := · }) do
@@ -409,7 +457,7 @@ where
       ("rhs", ← dumpExpr rule.rhs),
     ]
   dumpObj (fields : List (String × Json)) : M Unit :=
-    IO.println <| Json.mkObj fields |>.compress
+    emit <| Json.mkObj fields
 
 end
 
@@ -435,4 +483,4 @@ def exportMetadata : Json :=
   ]
 
 def dumpMetadata : M Unit := do
-  IO.println exportMetadata.compress
+  emit exportMetadata

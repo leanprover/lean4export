@@ -1,4 +1,5 @@
 import Export
+import Export.Par
 open Lean
 
 def main (args : List String) : IO Unit := do
@@ -10,9 +11,13 @@ def main (args : List String) : IO Unit := do
   let constants := match constants.tail? with
     | some cs => cs.map fun c => Syntax.decodeNameLit ("`" ++ c) |>.get!
     | none    => env.constants.toList.map Prod.fst |>.filter (!·.isInternal)
-  M.run env do
-    let _ ← initState env opts
-    dumpMetadata
-    for c in constants do
-      modify (fun st => { st with noMDataExprs := {} })
-      dumpConstant c
+  if opts.any (· == "--serial-walk") || opts.any (· == "--export-mdata") then
+    M.run env do
+      let _ ← initState env opts
+      dumpMetadata
+      for c in constants do
+        modify (fun st => { st with noMDataExprs := {} })
+        dumpConstant c
+      finishOutput
+  else
+    ExportPar.run env opts constants
