@@ -1,5 +1,6 @@
 import Export
 import Export.Parse
+import Export.Par
 open Lean
 
 def run (act : M α) : MetaM Unit := do
@@ -854,3 +855,31 @@ info: {"in":1,"str":{"pre":0,"str":"String"}}
   M.run env do
     initState env
     dumpConstant `root
+
+/-! The parallel exporter (`ExportPar.run`) must write exactly the bytes of the sequential one. -/
+
+/-- Everything `act` prints to stdout. -/
+def captureOut (act : IO Unit) : IO String := do
+  let (out, ()) ← IO.FS.withIsolatedStreams act
+  return out
+
+/-- Compare the sequential and the parallel exporter on `constants`. -/
+def sameOutput (env : Environment) (constants : List Name) : IO Unit := do
+  let seq ← captureOut <| M.run env do
+    initState env
+    dumpMetadata
+    for c in constants do
+      modify fun st => { st with noMDataExprs := {} }
+      dumpConstant c
+  let par ← captureOut <| ExportPar.run env [] constants
+  unless seq == par do
+    throw <| IO.userError s!"parallel output differs\n--- sequential\n{seq}\n--- parallel\n{par}"
+  if seq.isEmpty then throw <| IO.userError "no output"
+
+-- The re-entrant literal case from the test above, with its custom prelude.
+#eval show IO Unit from do
+  sameOutput (← reentrantEnv) [`root]
+
+-- Nat and String literals, binders, `let`, projections and a structure.
+#eval show MetaM Unit from do
+  sameOutput (← getEnv) [``literals, ``Prod.fst, ``Nat.add_comm, ``List.map, ``Nat.rec]
