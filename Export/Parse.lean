@@ -210,9 +210,30 @@ def parseExprProj (json : Json) : M Expr := do
 
   return .proj typeName projIdx struct
 
+/-- Decimal digits to `Nat` in sub-quadratic time. `String.toNat?` folds `n * 10 + d` over the
+digits, which is quadratic in the digit count. This splits the digit range in halves and combines
+`hi * 10 ^ k + lo`, so the large multiplications go to GMP. `b` holds ASCII digits only; reads
+`b[lo:hi]`. -/
+partial def natOfDigits (b : ByteArray) (lo hi : Nat) : Nat :=
+  if hi - lo ≤ 64 then Id.run do
+    let mut n := 0
+    for i in [lo:hi] do
+      n := n * 10 + (b[i]!.toNat - 48)
+    return n
+  else
+    let k := (hi - lo) / 2
+    natOfDigits b lo (hi - k) * 10 ^ k + natOfDigits b (hi - k) hi
+
+/-- The same result as `String.toNat?` on every string (a string with `_` separators goes to
+`String.toNat?` itself). -/
+def parseDecNat? (s : String) : Option Nat :=
+  if !s.isNat then none
+  else if s.any (· == '_') then s.toNat?
+  else some (natOfDigits s.toUTF8 0 s.utf8ByteSize)
+
 def parseExprNatLit (json : Json) : M Expr := do
   let .str natValStr := json | fail s!"Expr.lit natVal invalid"
-  let some natVal := String.toNat? natValStr | fail s!"Expr.lit natVal invalid"
+  let some natVal := parseDecNat? natValStr | fail s!"Expr.lit natVal invalid"
 
   return .lit (.natVal natVal)
 

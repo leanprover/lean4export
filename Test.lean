@@ -747,3 +747,92 @@ literals
 #guard_msgs in
 #eval runParserTest do
   dumpConstant ``literals
+
+/-!
+`natVal` literal parsing (`parseDecNat?`)
+
+`parseDecNat?` must give the same result as `String.toNat?` on every string. The tests cover the
+edge cases of `String.toNat?`, the cut points of `natOfDigits` (its base case reads at most 64
+digits, and one 64-bit word holds 19 or 20 digits), values next to powers of ten, random digit
+strings, long digit strings of many blocks, and a round trip through the exporter's printer.
+-/
+
+section NatLit
+open Export.Parse (parseDecNat?)
+
+/- Same result as `String.toNat?` on edge cases. -/
+#guard ["", "0", "00", "007", "1", "9", "10", "1_000", "1__0", "_1", "1_", "_", "+1", "-1", " 1",
+  "1 ", "1.0", "1e3", "0x10", "١٢٣", "٣", "12a", "a12"].all
+  fun s => parseDecNat? s == s.toNat?
+
+/- Digit counts at the cut points: one 64-bit word (19, 20 digits), the base case of
+`natOfDigits` (64, 65 digits) and the first splits (128, 129, 130 digits). -/
+#guard [1, 2, 18, 19, 20, 21, 63, 64, 65, 66, 127, 128, 129, 130, 256, 1000].all fun k =>
+  ["".pushn '9' k, "1".pushn '0' (k - 1), "".pushn '0' k, "".pushn '0' k ++ "1"].all
+    fun s => parseDecNat? s == s.toNat?
+
+#guard parseDecNat? (toString (2 ^ 64 - 1)) == some (2 ^ 64 - 1)
+#guard parseDecNat? (toString (2 ^ 64)) == some (2 ^ 64)
+
+/- Values next to powers of ten, with and without leading zeros. -/
+#guard (List.range 400).all fun k =>
+  [10 ^ k - 1, 10 ^ k, 10 ^ k + 1].all fun n =>
+    parseDecNat? (toString n) == some n && parseDecNat? ("000" ++ toString n) == some n
+
+/-- `len` decimal digits from a fixed linear congruential generator. -/
+def lcgDigits (seed len : Nat) : String := Id.run do
+  let mut x := seed
+  let mut s := ""
+  for _ in [0:len] do
+    x := (x * 6364136223846793005 + 1442695040888963407) % 2 ^ 64
+    s := s.push (Char.ofNat (48 + (x / 2 ^ 33) % 10))
+  return s
+
+-- Random digit strings of up to 2,000 digits.
+#guard (List.range 300).all fun i =>
+  let s := lcgDigits i (i * 7 % 2000 + 1)
+  parseDecNat? s == s.toNat?
+
+/- Long digit strings of many blocks, checked against `Nat` arithmetic (no `String.toNat?`,
+which is quadratic): 300,000 digits. -/
+#guard parseDecNat? ("1".pushn '0' 300000) == some (10 ^ 300000)
+#guard parseDecNat? ("".pushn '9' 300000) == some (10 ^ 300000 - 1)
+#guard parseDecNat? ("12345".pushn '0' 299995 ++ "6789") == some (12345 * 10 ^ 299999 + 6789)
+
+/-- A round trip through the exporter: a constant whose value is the literal `n` is dumped and
+parsed again, and the parsed value must be the same literal. -/
+meta def natLitRoundTrip (name : Name) (n : Nat) : MetaM Bool := do
+  let decl : DefinitionVal :=
+    { name := name, levelParams := [], type := mkConst ``Nat, value := mkRawNatLit n,
+      hints := .opaque, safety := .safe, all := [name] }
+  addDecl (.defnDecl decl)
+  let bufferRef ← IO.mkRef {data := .empty, pos := 0}
+  let stream := .ofBuffer bufferRef
+  IO.withStdout stream <| do
+    run do
+      initState (← read).env
+      dumpMetadata
+      dumpConstant name
+  bufferRef.modify fun buf => { buf with pos := 0 }
+  let env ← Export.parseStream stream
+  return match env.constMap[name]? with
+    | some (.defnInfo d) => d.value == .lit (.natVal n)
+    | _ => false
+
+/-- info: true -/
+#guard_msgs in
+#eval natLitRoundTrip `natLitZero 0
+
+/-- info: true -/
+#guard_msgs in
+#eval natLitRoundTrip `natLitWord (2 ^ 64 - 1)
+
+/-- info: true -/
+#guard_msgs in
+#eval natLitRoundTrip `natLitBlock (10 ^ 64 + 1)
+
+/-- info: true -/
+#guard_msgs in
+#eval natLitRoundTrip `natLitHuge (3 ^ 60000 + 7)
+
+end NatLit
