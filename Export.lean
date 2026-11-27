@@ -35,8 +35,8 @@ structure Context where
 /--
 A wrapper around `Expr` whose `BEq` uses structural equality. This keeps
 expressions that differ only in binder names or binder info distinct in
-`visitedExprs`, so an export does not depend on which declarations were
-exported before it.
+the expression caches (`visitedExprs` and `noMDataExprs`), so an export does
+not depend on which declarations were exported before it.
 -/
 structure ExprKey where
   expr : Expr
@@ -55,7 +55,7 @@ structure State where
   visitedLevels : HashMap Level Nat := HashMap.emptyWithCapacity 1000 |>.insert .zero 0
   visitedExprs : HashMap ExprKey Nat := HashMap.emptyWithCapacity 10000000
   visitedConstants : NameHashSet := {}
-  noMDataExprs : HashMap Expr Expr := HashMap.emptyWithCapacity 100000
+  noMDataExprs : HashMap ExprKey Expr := HashMap.emptyWithCapacity 100000
   exportMData : Bool := false
   exportUnsafe : Bool := false
   ignoreMissing : Bool := false
@@ -146,7 +146,7 @@ def dumpNames (uparams : List Name) : M Json := do
   return nameIdxs.toJson
 
 def removeMData (e : Expr) : M Expr := do
-  if let some x := (← get).noMDataExprs[e]? then
+  if let some x := (← get).noMDataExprs[ExprKey.mk e]? then
     return x
   let e' ← match e with
   | .mdata _ e' => removeMData e'
@@ -167,7 +167,7 @@ def removeMData (e : Expr) : M Expr := do
     pure <| e.updateForallE! (← removeMData d) (← removeMData b)
   | .proj _ _ e2 =>
     pure <| e.updateProj! (← removeMData e2)
-  modify (fun st => { st with noMDataExprs := st.noMDataExprs.insert e e' })
+  modify (fun st => { st with noMDataExprs := st.noMDataExprs.insert (ExprKey.mk e) e' })
   pure e'
 
 mutual

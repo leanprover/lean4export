@@ -86,6 +86,32 @@ info:
   let _ ← dumpExpr e1
   let _ ← dumpExpr e2
 
+/-- A type whose two conjuncts differ only in binder info (`{a}` vs `(a)`). -/
+theorem mixedBinders : (∀ {a : Prop}, a → a) ∧ (∀ (a : Prop), a → a) :=
+  ⟨fun h => h, fun _ h => h⟩
+
+/--
+info: {"in":1,"str":{"pre":0,"str":"And"}}
+{"const":{"name":1,"us":[]},"ie":0}
+{"in":2,"str":{"pre":0,"str":"a"}}
+{"ie":1,"sort":0}
+{"in":3,"str":{"pre":2,"str":"_@"}}
+{"in":4,"str":{"pre":3,"str":"_internal"}}
+{"in":5,"str":{"pre":4,"str":"_hyg"}}
+{"in":6,"num":{"i":0,"pre":5}}
+{"bvar":0,"ie":2}
+{"bvar":1,"ie":3}
+{"forallE":{"binderInfo":"default","body":3,"name":6,"type":2},"ie":4}
+{"forallE":{"binderInfo":"implicit","body":4,"name":2,"type":1},"ie":5}
+{"app":{"arg":5,"fn":0},"ie":6}
+{"forallE":{"binderInfo":"default","body":4,"name":2,"type":1},"ie":7}
+{"app":{"arg":7,"fn":6},"ie":8}
+-/
+#guard_msgs in
+#eval run do
+  let some ci := (← read).env.find? ``mixedBinders | panic! "mixedBinders not found"
+  dumpExpr ci.type
+
 /-- info: {"ie":0,"natVal":"100000000000000023456789"}
 -/
 #guard_msgs in
